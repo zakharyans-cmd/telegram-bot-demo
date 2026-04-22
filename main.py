@@ -12,7 +12,7 @@ from telegram.ext import (
 TOKEN = os.getenv("BOT_TOKEN")
 
 # 👉 сюда впиши свой Telegram ID (я ниже объясню как узнать)
-ADMIN_ID = 123456789
+ADMIN_ID = 509239406
 
 # этапы диалога
 NAME, PHONE, SERVICE, COMMENT = range(4)
