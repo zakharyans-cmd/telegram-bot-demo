@@ -46,9 +46,10 @@ async def start_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
 
-    await update.message.reply_text(
-        "📞 Напишите ваш телефон или @username в Telegram:"
-    )
+ 
+      await update.message.reply_text(
+    "📞 Оставьте Ваш телефон или ник в телеграмм:"
+)    )
     return CONTACT
 
 
