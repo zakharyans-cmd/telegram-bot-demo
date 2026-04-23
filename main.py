@@ -1,36 +1,12 @@
 import os
-import gspread
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 509239406
 
-# --- GOOGLE SHEETS (CRM) ---
-# нужен service_account json (подключим потом если надо)
-# пока просто структура
-def save_to_sheet(data):
-    try:
-        gc = gspread.service_account(filename="credentials.json")
-        sh = gc.open("Leads")
-        worksheet = sh.sheet1
-        worksheet.append_row([
-            data.get("tariff"),
-            data.get("name"),
-            data.get("business"),
-            data.get("status")
-        ])
-    except:
-        pass
 
-
-# --- МЕНЮ ---
+# ---------------- МЕНЮ ----------------
 keyboard = [
     ["🥉 Старт 30k"],
     ["🥈 Рост 40k"],
@@ -40,101 +16,111 @@ keyboard = [
 menu = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
-# --- ДОДЖИМ (6 / 24 / 48 часов) ---
+# ---------------- ДОЖИМ ----------------
 async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
     await context.bot.send_message(
-        context.job.chat_id,
-        "👋 Напоминание: вы смотрели настройку системы.\n\nЕсли актуально — можем запустить сегодня."
+        chat_id=context.job.chat_id,
+        text=(
+            "👋 Напомню аккуратно.\n\n"
+            "Если актуально — могу запустить систему под ваш бизнес сегодня.\n"
+            "Она уже готова к внедрению."
+        )
     )
+
 
 async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
     await context.bot.send_message(
-        context.job.chat_id,
-        "⏳ Всё ещё актуально?\n\nСистема может уже принимать заявки за вас."
+        chat_id=context.job.chat_id,
+        text=(
+            "⏳ Всё ещё актуально?\n\n"
+            "Система может уже сейчас начать собирать заявки вместо вас."
+        )
     )
+
 
 async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
     await context.bot.send_message(
-        context.job.chat_id,
-        "📌 Последнее напоминание\n\nЕсли хотите — могу запустить систему сегодня."
+        chat_id=context.job.chat_id,
+        text=(
+            "📌 Не буду больше отвлекать.\n\n"
+            "Если решите — просто напишите «старт», я подключу систему."
+        )
     )
 
 
-# --- СТАРТ ---
+# ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
+    context.chat_data.clear()
 
     await update.message.reply_text(
-        "🚀 Мы настраиваем систему продаж для бизнеса:\n\n"
-        "— заявки 24/7\n"
-        "— автоматизация\n"
-        "— рост конверсии\n\n"
+        "🚀 Я настраиваю для бизнеса систему, которая превращает обращения клиентов в продажи автоматически.\n\n"
+        "— без потерь заявок\n"
+        "— без ручной переписки\n"
+        "— с ростом конверсии\n\n"
         "👇 Выберите уровень:",
         reply_markup=menu
     )
 
 
-# --- ОБРАБОТЧИК ---
+# ---------------- ЛОГИКА ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    # --- 30K ---
-    if text == "🥉 Старт 30k":
-        context.user_data.update({
-            "tariff": "30k",
-            "level": "basic",
-            "status": "new"
-        })
 
+    # 🥉 30K
+    if text == "🥉 Старт 30k":
+        context.user_data["tariff"] = "30k"
         await update.message.reply_text(
             "🥉 БАЗОВАЯ СИСТЕМА\n\n"
-            "✔ заявки в Telegram\n"
-            "✔ быстрый запуск\n\n"
-            "Как вас зовут?",
+            "✔ приём заявок в Telegram\n"
+            "✔ простая автоматизация\n\n"
+            "Как к вам можно обращаться?",
             reply_markup=ReplyKeyboardRemove()
         )
         context.user_data["step"] = "name"
         return
 
-    # --- 40K ---
-    if text == "🥈 Рост 40k":
-        context.user_data.update({
-            "tariff": "40k",
-            "level": "growth",
-            "status": "new"
-        })
 
+    # 🥈 40K
+    if text == "🥈 Рост 40k":
+        context.user_data["tariff"] = "40k"
         await update.message.reply_text(
             "🥈 СИСТЕМА РОСТА\n\n"
-            "✔ заявки + автоответ\n"
-            "✔ выше конверсия\n\n"
-            "Как вас зовут?",
+            "✔ автоматические ответы\n"
+            "✔ рост конверсии\n\n"
+            "Как к вам можно обращаться?",
             reply_markup=ReplyKeyboardRemove()
         )
         context.user_data["step"] = "name"
         return
 
-    # --- 60K ---
-    if text == "🥇 Агентство 60k":
-        context.user_data.update({
-            "tariff": "60k",
-            "level": "agency",
-            "status": "new"
-        })
 
+    # 🥇 60K
+    if text == "🥇 Агентство 60k":
+        context.user_data["tariff"] = "60k"
         await update.message.reply_text(
             "🥇 АГЕНТСКАЯ СИСТЕМА\n\n"
-            "✔ CRM-логика\n"
-            "✔ контроль заявок\n"
-            "✔ максимальная конверсия\n\n"
-            "Как вас зовут?",
+            "✔ управление заявками\n"
+            "✔ структура продаж\n"
+            "✔ масштабирование бизнеса\n\n"
+            "Как к вам можно обращаться?",
             reply_markup=ReplyKeyboardRemove()
         )
         context.user_data["step"] = "name"
         return
 
 
-    # --- ИМЯ ---
+    # 👤 ИМЯ
     if context.user_data.get("step") == "name":
         context.user_data["name"] = text
         context.user_data["step"] = "business"
@@ -143,14 +129,21 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # --- ФИНАЛ / ОПЛАТА ---
+    # 💼 ФИНАЛ + ОПЛАТА
     if context.user_data.get("step") == "business":
         context.user_data["business"] = text
 
         data = context.user_data
 
-        # CRM сохранение
-        save_to_sheet(data)
+        await update.message.reply_text(
+            "Отлично 👍 я всё понял.\n\n"
+            "Я могу внедрить систему под ваш бизнес и запустить её.\n\n"
+            "💳 Формат:\n"
+            "— оплата по ссылке или переводом\n"
+            "— после оплаты начинается настройка\n\n"
+            "👉 После оплаты нажмите кнопку ниже",
+            reply_markup=ReplyKeyboardMarkup([["💰 Я оплатил"]], resize_keyboard=True)
+        )
 
         # уведомление тебе
         await context.bot.send_message(
@@ -159,18 +152,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🔥 НОВЫЙ ЛИД\n\n"
                 f"Тариф: {data['tariff']}\n"
                 f"Имя: {data['name']}\n"
-                f"Бизнес: {data['business']}\n"
-                f"Статус: {data['status']}"
+                f"Бизнес: {data['business']}"
             )
-        )
-
-        await update.message.reply_text(
-            "🔥 Отлично, я всё понял.\n\n"
-            "Я могу запустить систему для вашего бизнеса.\n\n"
-            "💳 Оплата:\n"
-            "По ссылке или переводом (будет подключено через кассу)\n\n"
-            "После оплаты нажмите 👇",
-            reply_markup=ReplyKeyboardMarkup([["💰 Я оплатил"]], resize_keyboard=True)
         )
 
         # запуск дожима
@@ -183,23 +166,23 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # --- ОПЛАТА (НЕ ФЕЙК) ---
+    # 💰 ОПЛАТА
     if text == "💰 Я оплатил":
-        context.user_data["status"] = "pending_payment"
+        context.chat_data["paid"] = True
 
         await update.message.reply_text(
-            "👍 Спасибо!\n\n"
-            "Я получил уведомление об оплате.\n"
-            "Сейчас проверю поступление и начну настройку."
+            "Принял 👍\n\n"
+            "Я зафиксировал ваш запрос.\n"
+            "Сейчас проверю оплату и начну настройку."
         )
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="💰 КЛИЕНТ НАЖАЛ 'Я ОПЛАТИЛ' (нужно проверить)"
+            text="💰 КЛИЕНТ НАЖАЛ 'Я ОПЛАТИЛ'"
         )
 
 
-# --- ЗАПУСК ---
+# ---------------- RUN ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
