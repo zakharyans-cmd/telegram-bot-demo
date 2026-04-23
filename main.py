@@ -18,7 +18,7 @@ reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 # старт
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Привет!\n\n"
+        "🔥 VERSION 2026 TEST ACTIVE"
         "Выберите, какую систему хотите:"
         "\n\n👇",
         reply_markup=reply_markup
