@@ -11,7 +11,8 @@ from telegram.ext import (
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-ADMIN_ID = 509239406
+ADMIN_ID = 509239406  # твой Telegram ID
+
 NAME, CONTACT = range(2)
 
 keyboard = [
@@ -46,10 +47,9 @@ async def start_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
 
- 
-      await update.message.reply_text(
-    "📞 Оставьте Ваш телефон или ник в телеграмм:"
-)    )
+    await update.message.reply_text(
+        "📞 Оставьте Ваш телефон или ник в Telegram, и мы свяжемся с Вами:"
+    )
     return CONTACT
 
 
@@ -57,12 +57,15 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
 
+    user = update.message.from_user
+
     data = context.user_data
 
     text = (
         "🔥 НОВАЯ ЗАЯВКА\n\n"
         f"👤 Имя: {data['name']}\n"
-        f"📞 Контакт: {data['contact']}"
+        f"📞 Контакт: {data['contact']}\n"
+        f"🔗 Username: @{user.username if user.username else 'нет'}"
     )
 
     # отправка тебе
