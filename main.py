@@ -10,16 +10,15 @@ from telegram.ext import (
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
-
-ADMIN_ID = 509239406  # твой Telegram ID
+ADMIN_ID = 509239406
 
 NAME, CONTACT = range(2)
 
 # Главное меню
 keyboard = [
-    ["🥉 Простые заявки"],
-    ["🥈 Больше заявок"],
-    ["🥇 Максимум клиентов"]
+    ["🥉 Старт (30k)"],
+    ["🥈 Рост заявок (40k)"],
+    ["🥇 Система бизнеса (60k)"]
 ]
 
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -31,33 +30,65 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 Привет!\n\n"
         "Я помогу вам настроить систему, которая автоматически принимает заявки клиентов в Telegram.\n\n"
         "Без переписок вручную и без потери клиентов.\n\n"
-        "👇 Выберите вариант:",
+        "👇 Выберите уровень системы:",
         reply_markup=reply_markup
     )
 
 
-# ВЫБОР ТАРИФА (ГЛАВНАЯ ЛОГИКА)
+# ВЫБОР ТАРИФА
 async def router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
+    context.user_data["tariff"] = text
 
-    if text in ["🥉 Простые заявки", "🥈 Больше заявок", "🥇 Максимум клиентов"]:
-        context.user_data["tariff"] = text
+    if text == "🥉 Старт (30k)":
 
         await update.message.reply_text(
-            "Отлично 👍\n\nСейчас задам 3 коротких вопроса и настрою систему под ваш бизнес.",
-            reply_markup=ReplyKeyboardRemove()
+            "🥉 БАЗОВАЯ СИСТЕМА\n\n"
+            "Это простой запуск системы заявок.\n\n"
+            "✔ заявки приходят в Telegram\n"
+            "✔ клиенты ничего не теряются\n"
+            "✔ быстрая настройка под ваш бизнес\n\n"
+            "⏱ запуск: 1–3 дня"
         )
 
-        await update.message.reply_text("Как вас зовут или как называется ваш бизнес?")
-        return NAME
+    elif text == "🥈 Рост заявок (40k)":
 
-    return ConversationHandler.END
+        await update.message.reply_text(
+            "🥈 РОСТ ЗАЯВОК\n\n"
+            "Здесь система становится умнее и даёт больше конверсии.\n\n"
+            "✔ выбор услуг кнопками\n"
+            "✔ автоответ клиенту\n"
+            "✔ более структурированные заявки\n\n"
+            "👉 больше людей доходят до заявки"
+        )
+
+    elif text == "🥇 Система бизнеса (60k)":
+
+        await update.message.reply_text(
+            "🥇 ПОЛНАЯ СИСТЕМА\n\n"
+            "Это уже управление заявками как системой.\n\n"
+            "✔ контроль всех заявок\n"
+            "✔ структура / мини CRM\n"
+            "✔ фиксация клиентов\n"
+            "✔ максимальная конверсия\n\n"
+            "👉 подходит для бизнеса с потоком клиентов"
+        )
+
+    await update.message.reply_text(
+        "Отлично 👍\n\n"
+        "Я сейчас настрою систему под ваш бизнес.\n"
+        "Она будет автоматически принимать заявки и отправлять их вам в Telegram.\n\n"
+        "Сейчас задам 3 коротких вопроса.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    await update.message.reply_text("Как вас зовут или как называется бизнес?")
+    return NAME
 
 
-# ИМЯ / БИЗНЕС
+# ИМЯ
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
-
     await update.message.reply_text("Чем вы занимаетесь?")
     return CONTACT
 
@@ -65,7 +96,6 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # СФЕРА / КОНТАКТ
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
-
     data = context.user_data
 
     text = (
@@ -78,12 +108,13 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # отправка тебе
     await context.bot.send_message(chat_id=ADMIN_ID, text=text)
 
-    # сохранение в файл
+    # сохранение
     with open("leads.txt", "a", encoding="utf-8") as f:
         f.write(text + "\n\n")
 
     await update.message.reply_text(
-        "Спасибо 👍 Я всё получил и скоро с вами свяжусь.",
+        "Спасибо 👍\n"
+        "Я всё получил. Скоро свяжусь с вами и запущу систему.",
         reply_markup=reply_markup
     )
 
@@ -99,7 +130,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# ЗАПУСК БОТА
+# ЗАПУСК
 app = ApplicationBuilder().token(TOKEN).build()
 
 conv_handler = ConversationHandler(
