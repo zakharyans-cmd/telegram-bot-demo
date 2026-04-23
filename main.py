@@ -15,57 +15,62 @@ ADMIN_ID = 509239406  # твой Telegram ID
 
 NAME, CONTACT = range(2)
 
+# КНОПКИ ГЛАВНОГО ЭКРАНА
 keyboard = [
-    ["📩 Оставить заявку"]
+    ["🥉 Простые заявки"],
+    ["🥈 Больше заявок"],
+    ["🥇 Максимум клиентов"]
 ]
 
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
-# старт
+# СТАРТ
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Добро пожаловать!\n\n"
-        "🤖 Я бот для бизнеса, который:\n"
-        "• принимает заявки 24/7\n"
-        "• отвечает клиентам автоматически\n\n"
-        "👇 Попробуйте, как это работает:",
+        "👋 Привет!\n\n"
+        "Я помогу вам настроить систему, которая автоматически принимает заявки клиентов в Telegram.\n\n"
+        "Без переписок вручную и без потери клиентов.\n\n"
+        "👇 Выберите вариант:",
         reply_markup=reply_markup
     )
 
 
-# запуск заявки
-async def start_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "✍️ Как вас зовут?",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    return NAME
+# ВЫБОР ТАРИФА
+async def router(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+
+    context.user_data["tariff"] = text
+
+    if text in ["🥉 Простые заявки", "🥈 Больше заявок", "🥇 Максимум клиентов"]:
+        await update.message.reply_text(
+            "Отлично 👍\n\nСейчас задам 3 коротких вопроса и настрою систему под ваш бизнес.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await update.message.reply_text("Как вас зовут или как называется бизнес?")
+        return NAME
+
+    return ConversationHandler.END
 
 
-# имя
+# ИМЯ
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
-
-    await update.message.reply_text(
-        "📞 Оставьте Ваш телефон или ник в Telegram, и мы свяжемся с Вами:"
-    )
+    await update.message.reply_text("Чем вы занимаетесь?")
     return CONTACT
 
 
-# контакт
+# КОНТАКТ
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
-
-    user = update.message.from_user
 
     data = context.user_data
 
     text = (
         "🔥 НОВАЯ ЗАЯВКА\n\n"
+        f"📌 Тариф: {data['tariff']}\n"
         f"👤 Имя: {data['name']}\n"
-        f"📞 Контакт: {data['contact']}\n"
-        f"🔗 Username: @{user.username if user.username else 'нет'}"
+        f"💼 Сфера: {data['contact']}"
     )
 
     # отправка тебе
@@ -76,30 +81,23 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f.write(text + "\n\n")
 
     await update.message.reply_text(
-        "✅ Спасибо! Заявка отправлена.",
+        "Спасибо 👍 Я всё получил и скоро с вами свяжусь.",
         reply_markup=reply_markup
     )
 
     return ConversationHandler.END
 
 
-# обработка кнопки
-async def router(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-
-    if text == "📩 Оставить заявку":
-        return await start_order(update, context)
-
-
-# отмена
+# ОТМЕНА
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "❌ Отменено",
+        "Отменено",
         reply_markup=reply_markup
     )
     return ConversationHandler.END
 
 
+# ЗАПУСК
 app = ApplicationBuilder().token(TOKEN).build()
 
 conv_handler = ConversationHandler(
