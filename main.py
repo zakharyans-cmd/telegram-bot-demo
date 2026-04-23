@@ -15,7 +15,7 @@ ADMIN_ID = 509239406  # твой Telegram ID
 
 NAME, CONTACT = range(2)
 
-# КНОПКИ ГЛАВНОГО ЭКРАНА
+# Главное меню
 keyboard = [
     ["🥉 Простые заявки"],
     ["🥈 Больше заявок"],
@@ -36,31 +36,33 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ВЫБОР ТАРИФА
+# ВЫБОР ТАРИФА (ГЛАВНАЯ ЛОГИКА)
 async def router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    context.user_data["tariff"] = text
-
     if text in ["🥉 Простые заявки", "🥈 Больше заявок", "🥇 Максимум клиентов"]:
+        context.user_data["tariff"] = text
+
         await update.message.reply_text(
             "Отлично 👍\n\nСейчас задам 3 коротких вопроса и настрою систему под ваш бизнес.",
             reply_markup=ReplyKeyboardRemove()
         )
-        await update.message.reply_text("Как вас зовут или как называется бизнес?")
+
+        await update.message.reply_text("Как вас зовут или как называется ваш бизнес?")
         return NAME
 
     return ConversationHandler.END
 
 
-# ИМЯ
+# ИМЯ / БИЗНЕС
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
+
     await update.message.reply_text("Чем вы занимаетесь?")
     return CONTACT
 
 
-# КОНТАКТ
+# СФЕРА / КОНТАКТ
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
 
@@ -68,15 +70,15 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         "🔥 НОВАЯ ЗАЯВКА\n\n"
-        f"📌 Тариф: {data['tariff']}\n"
-        f"👤 Имя: {data['name']}\n"
-        f"💼 Сфера: {data['contact']}"
+        f"📌 Тариф: {data.get('tariff')}\n"
+        f"👤 Бизнес: {data.get('name')}\n"
+        f"💼 Сфера: {data.get('contact')}"
     )
 
     # отправка тебе
     await context.bot.send_message(chat_id=ADMIN_ID, text=text)
 
-    # сохранение
+    # сохранение в файл
     with open("leads.txt", "a", encoding="utf-8") as f:
         f.write(text + "\n\n")
 
@@ -97,7 +99,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# ЗАПУСК
+# ЗАПУСК БОТА
 app = ApplicationBuilder().token(TOKEN).build()
 
 conv_handler = ConversationHandler(
