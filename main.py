@@ -5,15 +5,18 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 509239406
 
+# 👉 ВСТАВЬ ССЫЛКУ ОПЛАТЫ (ЮKASSA)
+PAYMENT_LINK = "https://your-payment-link.ru"
+
 
 # ---------------- МЕНЮ ----------------
-keyboard = [
-    ["🥉 Старт 30k"],
-    ["🥈 Рост 40k"],
-    ["🥇 Агентство 60k"]
-]
-
-menu = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+menu = ReplyKeyboardMarkup(
+    [
+        ["🥉 Старт", "🥈 Рост"],
+        ["🥇 Под ключ"]
+    ],
+    resize_keyboard=True
+)
 
 
 # ---------------- ДОЖИМ ----------------
@@ -24,9 +27,9 @@ async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text=(
-            "👋 Напомню аккуратно.\n\n"
-            "Если актуально — могу запустить систему под ваш бизнес сегодня.\n"
-            "Она уже готова к внедрению."
+            "👋 Напомню.\n\n"
+            "Такие системы обычно окупаются за счёт того, что перестают теряться заявки.\n\n"
+            "Если задача ещё актуальна — можно запустить."
         )
     )
 
@@ -38,8 +41,10 @@ async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text=(
-            "⏳ Всё ещё актуально?\n\n"
-            "Система может уже сейчас начать собирать заявки вместо вас."
+            "⏳ Частая ситуация:\n"
+            "клиент написал → ему не ответили вовремя → он ушёл.\n\n"
+            "Бот как раз закрывает этот момент.\n\n"
+            "Если хотите — подключу под вас."
         )
     )
 
@@ -51,8 +56,8 @@ async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text=(
-            "📌 Не буду больше отвлекать.\n\n"
-            "Если решите — просто напишите «старт», я подключу систему."
+            "📌 Закрываю диалог, чтобы не отвлекать.\n\n"
+            "Если вернётесь — просто напишите «старт»."
         )
     )
 
@@ -63,126 +68,159 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.chat_data.clear()
 
     await update.message.reply_text(
-        "🚀 Я настраиваю для бизнеса систему, которая превращает обращения клиентов в продажи автоматически.\n\n"
-        "— без потерь заявок\n"
-        "— без ручной переписки\n"
-        "— с ростом конверсии\n\n"
-        "👇 Выберите уровень:",
+        "Я настраиваю чат-ботов, которые берут переписку с клиентами на себя.\n\n"
+        "Отвечают сразу и доводят до заявки.\n\n"
+        "Выберите формат:",
         reply_markup=menu
     )
 
 
-# ---------------- ЛОГИКА ----------------
+# ---------------- ОСНОВНАЯ ЛОГИКА ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
 
-    # 🥉 30K
-    if text == "🥉 Старт 30k":
-        context.user_data["tariff"] = "30k"
-        await update.message.reply_text(
-            "🥉 БАЗОВАЯ СИСТЕМА\n\n"
-            "✔ приём заявок в Telegram\n"
-            "✔ простая автоматизация\n\n"
-            "Как к вам можно обращаться?",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        context.user_data["step"] = "name"
-        return
-
-
-    # 🥈 40K
-    if text == "🥈 Рост 40k":
-        context.user_data["tariff"] = "40k"
-        await update.message.reply_text(
-            "🥈 СИСТЕМА РОСТА\n\n"
-            "✔ автоматические ответы\n"
-            "✔ рост конверсии\n\n"
-            "Как к вам можно обращаться?",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        context.user_data["step"] = "name"
-        return
-
-
-    # 🥇 60K
-    if text == "🥇 Агентство 60k":
-        context.user_data["tariff"] = "60k"
-        await update.message.reply_text(
-            "🥇 АГЕНТСКАЯ СИСТЕМА\n\n"
-            "✔ управление заявками\n"
-            "✔ структура продаж\n"
-            "✔ масштабирование бизнеса\n\n"
-            "Как к вам можно обращаться?",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        context.user_data["step"] = "name"
-        return
-
-
-    # 👤 ИМЯ
-    if context.user_data.get("step") == "name":
-        context.user_data["name"] = text
+    # ВЫБОР ТАРИФА
+    if text in ["🥉 Старт", "🥈 Рост", "🥇 Под ключ"]:
+        context.user_data["tariff"] = text
         context.user_data["step"] = "business"
 
-        await update.message.reply_text("Чем вы занимаетесь?")
+        await update.message.reply_text(
+            "Чем вы занимаетесь?",
+            reply_markup=ReplyKeyboardRemove()
+        )
         return
 
 
-    # 💼 ФИНАЛ + ОПЛАТА
+    # НИША
     if context.user_data.get("step") == "business":
         context.user_data["business"] = text
-
-        data = context.user_data
+        context.user_data["step"] = "flow"
 
         await update.message.reply_text(
-            "Отлично 👍 я всё понял.\n\n"
-            "Я могу внедрить систему под ваш бизнес и запустить её.\n\n"
-            "💳 Формат:\n"
-            "— оплата по ссылке или переводом\n"
-            "— после оплаты начинается настройка\n\n"
-            "👉 После оплаты нажмите кнопку ниже",
-            reply_markup=ReplyKeyboardMarkup([["💰 Я оплатил"]], resize_keyboard=True)
+            "Как сейчас обрабатываете заявки?\n\n"
+            "1 — вручную\n"
+            "2 — есть CRM/бот"
+        )
+        return
+
+
+    # ДИАГНОСТИКА
+    if context.user_data.get("step") == "flow":
+        context.user_data["flow"] = text
+        business = context.user_data.get("business", "")
+
+        await update.message.reply_text(
+            f"Понял.\n\n"
+            f"В «{business}» обычно ключевая проблема — скорость ответа.\n\n"
+            "Если клиент не получает ответ быстро — он уходит."
         )
 
-        # уведомление тебе
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=(
-                "🔥 НОВЫЙ ЛИД\n\n"
-                f"Тариф: {data['tariff']}\n"
-                f"Имя: {data['name']}\n"
-                f"Бизнес: {data['business']}"
+        await update.message.reply_text(
+            "Что делаю я:\n\n"
+            "— бот отвечает сразу\n"
+            "— задаёт нужные вопросы\n"
+            "— доводит до заявки\n\n"
+            "Вы просто получаете уже тёплых клиентов."
+        )
+
+        # КЕЙС
+        await update.message.reply_text(
+            "Короткий пример:\n\n"
+            "в похожей нише после внедрения перестали теряться заявки "
+            "и загрузка выросла без увеличения рекламы."
+        )
+
+        # КАК ПРОХОДИТ
+        await update.message.reply_text(
+            "Как проходит запуск:\n\n"
+            "— собираю логику под ваш бизнес\n"
+            "— настраиваю сценарий\n"
+            "— подключаю и тестирую\n\n"
+            "Обычно 1–2 дня."
+        )
+
+        # ВЫБОР ДЕЙСТВИЯ
+        await update.message.reply_text(
+            f"👉 Можно сразу запустить:\n{PAYMENT_LINK}\n\n"
+            "Или задать вопрос перед оплатой:",
+            reply_markup=ReplyKeyboardMarkup(
+                [["💰 Оплатить", "❓ Задать вопрос"]],
+                resize_keyboard=True
             )
         )
 
-        # запуск дожима
+        # УВЕДОМЛЕНИЕ
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "🔥 ЛИД\n\n"
+                f"Тариф: {context.user_data['tariff']}\n"
+                f"Ниша: {context.user_data['business']}\n"
+                f"Процесс: {context.user_data['flow']}"
+            )
+        )
+
+        # ДОЖИМ
         job = context.job_queue
         job.run_once(remind_6h, 21600, chat_id=update.effective_chat.id)
         job.run_once(remind_24h, 86400, chat_id=update.effective_chat.id)
         job.run_once(remind_48h, 172800, chat_id=update.effective_chat.id)
 
-        context.user_data["step"] = "done"
+        context.user_data["step"] = "decision"
         return
 
 
-    # 💰 ОПЛАТА
+    # ВОПРОС
+    if text == "❓ Задать вопрос":
+        context.user_data["step"] = "question"
+
+        await update.message.reply_text(
+            "Напишите вопрос, отвечу лично."
+        )
+        return
+
+
+    if context.user_data.get("step") == "question":
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=f"❓ ВОПРОС ОТ ЛИДА:\n\n{text}"
+        )
+
+        await update.message.reply_text(
+            "Ответил вам в ближайшее время 👍"
+        )
+        return
+
+
+    # ОПЛАТА
+    if text == "💰 Оплатить":
+        await update.message.reply_text(
+            f"Вот ссылка для оплаты:\n{PAYMENT_LINK}\n\n"
+            "После оплаты нажмите «Я оплатил»",
+            reply_markup=ReplyKeyboardMarkup(
+                [["💰 Я оплатил"]],
+                resize_keyboard=True
+            )
+        )
+        return
+
+
     if text == "💰 Я оплатил":
         context.chat_data["paid"] = True
 
         await update.message.reply_text(
-            "Принял 👍\n\n"
-            "Я зафиксировал ваш запрос.\n"
-            "Сейчас проверю оплату и начну настройку."
+            "Принял.\n\n"
+            "Проверяю оплату и начинаю работу."
         )
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="💰 КЛИЕНТ НАЖАЛ 'Я ОПЛАТИЛ'"
+            text="💰 ОПЛАТА — ПРОВЕРЬ"
         )
 
 
-# ---------------- RUN ----------------
+# ---------------- ЗАПУСК ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
