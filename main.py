@@ -19,7 +19,7 @@ tariff_menu = ReplyKeyboardMarkup(
 )
 
 
-question_menu = ReplyKeyboardMarkup(
+action_menu = ReplyKeyboardMarkup(
     [
         ["Я оплатил", "Пример", "Задать вопрос"]
     ],
@@ -35,16 +35,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").lower()
 
     if any(x in text for x in ["цена", "стоимость", "сколько"]):
-        intro = "Привет 👋\nПодберу подходящий вариант под вашу задачу и покажу стоимость.\n\n"
+        intro = "Привет 👋\nСейчас быстро подберём подходящий вариант под вашу задачу.\n\n"
     elif any(x in text for x in ["как", "что", "расскажи", "интересно"]):
-        intro = "Привет 👋\nКоротко объясню, как это работает и чем может быть полезно.\n\n"
+        intro = "Привет 👋\nКоротко покажу, как это работает и что подойдёт вам.\n\n"
     else:
-        intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
+        intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в заявки.\n\n"
 
     await update.message.reply_text(
         intro + "Выберите вариант:",
         reply_markup=tariff_menu
     )
+
+
+# ---------------- ПРИМЕР ----------------
+async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    tariff = context.user_data.get("tariff")
+
+    if tariff == "Базовый":
+        msg = (
+            "📌 Пример:\n\n"
+            "Когда нет постоянного администратора, сообщения приходят в разное время, "
+            "и на часть из них просто не успевают ответить.\n\n"
+            "Система помогает не терять такие обращения."
+        )
+
+    elif tariff == "Стандарт":
+        msg = (
+            "📌 Пример:\n\n"
+            "Часто клиенты пишут и уходят, если не получают быстрый ответ.\n\n"
+            "Система сразу реагирует и ведёт диалог дальше без потери интереса."
+        )
+
+    elif tariff == "Под ключ":
+        msg = (
+            "📌 Пример:\n\n"
+            "Когда поток обращений большой, менеджеры не успевают обрабатывать всех.\n\n"
+            "Система берёт первый контакт на себя и передаёт уже тёплых клиентов."
+        )
+
+    else:
+        msg = "Сначала выберите вариант."
+
+    await update.message.reply_text(msg)
 
 
 # ---------------- ОСНОВНАЯ ЛОГИКА ----------------
@@ -53,36 +86,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---------------- ПРИМЕР ----------------
     if text == "Пример":
-
-        tariff = context.user_data.get("tariff")
-
-        if tariff == "Базовый":
-            msg = (
-                "📌 Базовый пример:\n\n"
-                "Когда у бизнеса нет постоянного администратора, "
-                "сообщения от клиентов могут приходить в разное время, "
-                "и не всегда получается ответить сразу.\n\n"
-                "Система помогает не терять такие обращения."
-            )
-
-        elif tariff == "Стандарт":
-            msg = (
-                "📌 Стандарт пример:\n\n"
-                "Клиенты часто пишут и не дожидаются ответа.\n\n"
-                "Система сразу реагирует, уточняет запрос и ведёт диалог дальше."
-            )
-
-        elif tariff == "Под ключ":
-            msg = (
-                "📌 Под ключ пример:\n\n"
-                "В загруженных бизнесах менеджеры не успевают обрабатывать все обращения.\n\n"
-                "Система берёт первичный диалог на себя и передаёт тёплого клиента."
-            )
-
-        else:
-            msg = "Сначала выберите тариф."
-
-        await update.message.reply_text(msg)
+        await send_example(update, context)
         return
 
     # ---------------- ВОПРОС ----------------
@@ -93,27 +97,17 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "С Вами скоро свяжутся 👍"
         )
 
-        # уведомление тебе СРАЗУ
+        # уведомление админу (без лишних данных)
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=(
-                "❓ НОВЫЙ ЗАПРОС\n\n"
-                f"Тариф: {context.user_data.get('tariff', 'не выбран')}\n"
-                f"Username: @{update.effective_user.username if update.effective_user.username else 'нет'}\n"
-                f"Chat ID: {update.effective_chat.id}"
-            )
+            text="Клиент написал вопрос"
         )
         return
 
-    # текст вопроса клиента
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=(
-                "💬 ВОПРОС КЛИЕНТА:\n\n"
-                f"{text}\n\n"
-                f"Chat ID: {update.effective_chat.id}"
-            )
+            text=f"Вопрос:\n\n{text}"
         )
 
         await update.message.reply_text(
@@ -131,61 +125,49 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="💰 ОПЛАТА ПОЛУЧЕНА"
+            text="Оплата получена"
         )
         return
 
     # ---------------- ТАРИФЫ ----------------
-    if text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
-        context.user_data["tariff"] = "Стандарт"
-        context.user_data["price"] = "50k"
+    if text == "Базовый — 30 000₽":
+        context.user_data["tariff"] = "Базовый"
 
-        message = (
-            "Стандарт ⭐\n\n"
-            "Оптимальное решение для большинства бизнесов.\n\n"
-            "Система:\n"
-            "— быстрые ответы\n"
-            "— уточнение запроса\n"
-            "— отсев случайных обращений"
+        msg = (
+            "Ты выбрал базовый вариант.\n\n"
+            "Подходит, если нужно просто не терять входящие обращения."
         )
 
-    elif text == "Базовый — 30 000₽":
-        context.user_data["tariff"] = "Базовый"
-        context.user_data["price"] = "30k"
+    elif text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
+        context.user_data["tariff"] = "Стандарт"
 
-        message = (
-            "Базовый вариант.\n\n"
-            "Подходит для простого приёма обращений без сложной логики."
+        msg = (
+            "Это оптимальный вариант.\n\n"
+            "Он закрывает основную проблему — быстрая реакция и удержание клиента в диалоге."
         )
 
     elif text == "Под ключ — 70 000₽":
         context.user_data["tariff"] = "Под ключ"
-        context.user_data["price"] = "70k"
 
-        message = (
-            "Под ключ.\n\n"
-            "Полная система обработки обращений с первичной квалификацией клиента."
+        msg = (
+            "Полное решение.\n\n"
+            "Если у тебя поток заявок и важно не терять ни одного клиента."
         )
 
     else:
         return
 
-    # ---------------- ОФФЕР ----------------
+    # ---------------- ПЕРЕХОД В ДЕЙСТВИЕ ----------------
     await update.message.reply_text(
-        message + "\n\n"
-        f"Стоимость: {context.user_data['price']}\n\n"
+        msg + "\n\n"
+        f"Стоимость: указана в выбранном варианте\n\n"
         f"Оплата:\n{PAYMENT_LINK}",
-        reply_markup=question_menu
+        reply_markup=action_menu
     )
 
-    # уведомление админу
     await context.bot.send_message(
         chat_id=ADMIN_ID,
-        text=(
-            "📩 ВЫБРАН ТАРИФ\n\n"
-            f"{context.user_data['tariff']} — {context.user_data['price']}\n"
-            f"User: @{update.effective_user.username if update.effective_user.username else 'нет'}"
-        )
+        text="Клиент выбрал вариант"
     )
 
 
