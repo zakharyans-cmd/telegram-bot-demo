@@ -49,11 +49,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ---------------- ТАРИФЫ ----------------
+# ---------------- ОСНОВНАЯ ЛОГИКА ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    # ---------------- 50K (ОСНОВНОЙ) ----------------
+    # ---------------- ВОПРОС ----------------
+    if text == "Задать вопрос":
+        context.user_data["step"] = "question"
+
+        await update.message.reply_text(
+            "С Вами скоро свяжутся 👍"
+        )
+        return
+
+    if context.user_data.get("step") == "question":
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=f"Вопрос клиента:\n\n{text}"
+        )
+
+        await update.message.reply_text(
+            "С Вами скоро свяжутся 👍"
+        )
+        return
+
+    # ---------------- ОПЛАТА ----------------
+    if text == "Я оплатил":
+        context.chat_data["paid"] = True
+
+        await update.message.reply_text(
+            "Принято. Начинаем работу 👍"
+        )
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text="Оплата получена"
+        )
+        return
+
+    # ---------------- ТАРИФЫ ----------------
     if text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
         context.user_data["tariff"] = "Стандарт"
         context.user_data["price"] = "50k"
@@ -68,7 +102,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Итог — больше качественных диалогов без лишней нагрузки."
         )
 
-    # ---------------- 30K ----------------
     elif text == "Базовый — 30 000₽":
         context.user_data["tariff"] = "Базовый"
         context.user_data["price"] = "30k"
@@ -79,7 +112,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Быстрая первичная обработка без дополнительной логики."
         )
 
-    # ---------------- 70K ----------------
     elif text == "Под ключ — 70 000₽":
         context.user_data["tariff"] = "Под ключ"
         context.user_data["price"] = "70k"
@@ -114,48 +146,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ---------------- ВОПРОСЫ ----------------
-async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-
-    # 💰 ОПЛАТА
-    if text == "Я оплатил":
-        context.chat_data["paid"] = True
-
-        await update.message.reply_text(
-            "Принято. Начинаем работу 👍"
-        )
-
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text="Оплата получена"
-        )
-
-    # ❓ ВОПРОС
-    elif text == "Задать вопрос":
-        context.user_data["step"] = "question"
-
-        await update.message.reply_text(
-            "С Вами скоро свяжутся 👍"
-        )
-
-    # 💬 СООБЩЕНИЕ
-    elif context.user_data.get("step") == "question":
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"Вопрос клиента:\n\n{text}"
-        )
-
-        await update.message.reply_text(
-            "С Вами скоро свяжутся 👍"
-        )
-
-
 # ---------------- RUN ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, payment))
 
 app.run_polling()
