@@ -18,7 +18,6 @@ tariff_menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-
 question_menu = ReplyKeyboardMarkup(
     [
         ["Я оплатил", "Пример", "Задать вопрос"]
@@ -39,7 +38,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif any(x in text for x in ["как", "что", "расскажи", "интересно"]):
         intro = "Привет 👋\nКоротко объясню, как это работает.\n\n"
     else:
-        intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в заявки.\n\n"
+        intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
 
     await update.message.reply_text(
         intro + "Выберите вариант:",
@@ -55,24 +54,24 @@ async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if tariff == "Базовый":
         msg = (
             "📌 Пример:\n\n"
-            "Когда у бизнеса нет постоянного администратора, "
-            "сообщения могут приходить в разное время, "
-            "и не всегда получается ответить сразу.\n\n"
+            "Когда нет постоянного администратора, сообщения приходят в разное время "
+            "и на часть из них не успевают ответить.\n\n"
             "Система помогает не терять такие обращения."
         )
 
     elif tariff == "Стандарт":
         msg = (
             "📌 Пример:\n\n"
-            "Клиенты часто пишут и не дожидаются ответа.\n\n"
-            "Система сразу реагирует и ведёт диалог дальше."
+            "Клиенты часто пишут и не получают быстрый ответ.\n\n"
+            "Система сразу реагирует и продолжает диалог без потери интереса."
         )
 
     elif tariff == "Под ключ":
         msg = (
             "📌 Пример:\n\n"
-            "При большом потоке обращений менеджеры не успевают отвечать всем.\n\n"
-            "Система берёт первичный диалог на себя и передаёт тёплых клиентов."
+            "Клиенты пишут в разное время — утром, вечером, в мессенджеры и соцсети.\n"
+            "Не всегда получается ответить сразу, и часть людей просто перестаёт ждать.\n\n"
+            "Система сразу отвечает на сообщение, уточняет запрос и помогает не терять заинтересованных клиентов."
         )
 
     else:
@@ -98,17 +97,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "С Вами скоро свяжутся 👍"
         )
 
-        # уведомление тебе
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="Клиент нажал: задать вопрос"
+            text="Вопрос"
         )
         return
 
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"Вопрос клиента:\n\n{text}"
+            text=update.message.text
         )
 
         await update.message.reply_text(
@@ -126,7 +124,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="Оплата получена"
+            text="Оплата"
         )
         return
 
@@ -136,7 +134,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = (
             "Базовый вариант.\n\n"
-            "Подходит для простого приёма обращений без сложной логики."
+            "Подходит для простого приёма обращений или записи на услугу без сложной логики."
         )
 
     elif text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
@@ -144,8 +142,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = (
             "Стандарт ⭐\n\n"
-            "Оптимальное решение для большинства бизнесов.\n\n"
-            "Система помогает быстро отвечать и не терять клиентов."
+            "Оптимальный вариант для большинства бизнесов.\n\n"
+            "Помогает быстрее обрабатывать обращения и не терять клиентов."
         )
 
     elif text == "Под ключ — 70 000₽":
@@ -153,7 +151,9 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = (
             "Под ключ.\n\n"
-            "Полная система обработки обращений с максимальной автоматизацией."
+            "Подходит, когда нужно полностью закрыть обработку входящих обращений: "
+            "от первого сообщения клиента до передачи вам заинтересованного клиента.\n"
+            "Система сама отвечает и помогает не терять обращения в потоке сообщений."
         )
 
     else:
@@ -168,7 +168,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=ADMIN_ID,
-        text=f"Клиент выбрал: {context.user_data.get('tariff')}"
+        text=context.user_data.get("tariff", "")
     )
 
 
