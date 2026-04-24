@@ -26,19 +26,50 @@ question_menu = ReplyKeyboardMarkup(
 )
 
 
+# ---------------- ДОЖИМ ----------------
+async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="Если актуально — помогу подобрать оптимальный вариант под вашу задачу 👌"
+    )
+
+
+async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="Часто клиенты возвращаются позже, чтобы спокойно всё решить. Я на связи 👍"
+    )
+
+
+async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="Закрою диалог, но если понадобится — просто напишите, помогу 👍"
+    )
+
+
+def start_reminders(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
+    job = context.job_queue
+    job.run_once(remind_6h, 21600, chat_id=chat_id)
+    job.run_once(remind_24h, 86400, chat_id=chat_id)
+    job.run_once(remind_48h, 172800, chat_id=chat_id)
+
+
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.chat_data.clear()
 
-    text = (update.message.text or "").lower()
-
-    if any(x in text for x in ["цена", "стоимость", "сколько"]):
-        intro = "Привет 👋\nСейчас подберём подходящий вариант под вашу задачу.\n\n"
-    elif any(x in text for x in ["как", "что", "расскажи", "интересно"]):
-        intro = "Привет 👋\nКоротко объясню, как это работает.\n\n"
-    else:
-        intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
+    intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в заявки.\n\n"
 
     await update.message.reply_text(
         intro + "Выберите вариант:",
@@ -55,23 +86,22 @@ async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             "📌 Пример:\n\n"
             "Когда нет постоянного администратора, сообщения приходят в разное время "
-            "и на часть из них не успевают ответить.\n\n"
-            "Система помогает не терять такие обращения."
+            "и часть обращений легко потерять.\n\n"
+            "Система фиксирует каждое сообщение, чтобы клиент не исчез."
         )
 
     elif tariff == "Стандарт":
         msg = (
             "📌 Пример:\n\n"
-            "Клиенты часто пишут и не получают быстрый ответ.\n\n"
-            "Система сразу реагирует и продолжает диалог без потери интереса."
+            "Клиент написал и не получил быстрый ответ — интерес начинает снижаться.\n\n"
+            "Система продолжает диалог и удерживает внимание до контакта."
         )
 
     elif tariff == "Под ключ":
         msg = (
             "📌 Пример:\n\n"
-            "Клиенты пишут в разное время — утром, вечером, в мессенджеры и соцсети.\n"
-            "Не всегда получается ответить сразу, и часть людей просто перестаёт ждать.\n\n"
-            "Система сразу отвечает на сообщение, уточняет запрос и помогает не терять заинтересованных клиентов."
+            "Клиенты пишут в разное время и часто не доходят до общения с менеджером.\n\n"
+            "Система сама отвечает, уточняет запрос и передаёт уже заинтересованных клиентов."
         )
 
     else:
@@ -84,12 +114,12 @@ async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    # ---------------- ПРИМЕР ----------------
+    # пример
     if text == "Пример":
         await send_example(update, context)
         return
 
-    # ---------------- ВОПРОС ----------------
+    # вопрос
     if text == "Задать вопрос":
         context.user_data["step"] = "question"
 
@@ -114,7 +144,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ---------------- ОПЛАТА ----------------
+    # оплата
     if text == "Я оплатил":
         context.chat_data["paid"] = True
 
@@ -128,38 +158,37 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ---------------- ТАРИФЫ ----------------
+    # тарифы
     if text == "Базовый — 30 000₽":
         context.user_data["tariff"] = "Базовый"
 
         msg = (
-            "Базовый вариант.\n\n"
-            "Подходит для простого приёма обращений или записи на услугу без сложной логики."
+            "🟢 Базовый вариант.\n\n"
+            "Роль: приём сообщений.\n"
+            "Помогает не терять обращения клиентов."
         )
 
     elif text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
         context.user_data["tariff"] = "Стандарт"
 
         msg = (
-            "Стандарт ⭐\n\n"
-            "Оптимальный вариант для большинства бизнесов.\n\n"
-            "Помогает быстрее обрабатывать обращения и не терять клиентов."
+            "🔵 Стандарт ⭐\n\n"
+            "Роль: ведение диалога.\n"
+            "Помогает удерживать клиента и доводить его до интереса."
         )
 
     elif text == "Под ключ — 70 000₽":
         context.user_data["tariff"] = "Под ключ"
 
         msg = (
-            "Под ключ.\n\n"
-            "Подходит, когда нужно полностью закрыть обработку входящих обращений: "
-            "от первого сообщения клиента до передачи вам заинтересованного клиента.\n"
-            "Система сама отвечает и помогает не терять обращения в потоке сообщений."
+            "🔴 Под ключ.\n\n"
+            "Роль: полный контроль потока.\n"
+            "Система обрабатывает обращения и передаёт только заинтересованных клиентов."
         )
 
     else:
         return
 
-    # ---------------- ОФФЕР ----------------
     await update.message.reply_text(
         msg + "\n\n"
         f"Оплата:\n{PAYMENT_LINK}",
@@ -170,6 +199,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=ADMIN_ID,
         text=context.user_data.get("tariff", "")
     )
+
+    # 👉 запускаем дожим
+    if not context.chat_data.get("paid"):
+        start_reminders(context, update.effective_chat.id)
 
 
 # ---------------- RUN ----------------
