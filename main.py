@@ -1,5 +1,5 @@
 import os
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -23,30 +23,27 @@ tariff_menu = ReplyKeyboardMarkup(
 async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
     if context.chat_data.get("paid"):
         return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Напомню: бот продолжает собирать и обрабатывать заявки без участия менеджера."
+        text="Напомню: система может продолжать обрабатывать заявки без участия менеджера."
     )
 
 
 async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
     if context.chat_data.get("paid"):
         return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Большая часть заявок теряется из-за задержки ответа. Это можно автоматизировать."
+        text="Часто заявки теряются просто из-за задержки ответа. Это можно убрать автоматизацией."
     )
 
 
 async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
     if context.chat_data.get("paid"):
         return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Закрываю диалог. Если будет актуально — просто напишите /start"
+        text="Если будет актуально — просто напишите /start, я продолжу."
     )
 
 
@@ -57,7 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Я помогаю бизнесу не терять заявки и быстрее доводить клиентов до покупки.\n\n"
-        "Выберите формат:",
+        "Выберите вариант:",
         reply_markup=tariff_menu
     )
 
@@ -73,7 +70,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "Базовый вариант.\n\n"
-            "Закрывает самое важное — быстрый ответ клиенту и передачу заявки менеджеру."
+            "Подходит, если нужно быстро закрыть обработку заявок:\n"
+            "— быстрый ответ клиенту\n"
+            "— сбор контакта\n"
+            "— передача менеджеру"
         )
 
     # ---------------- СТАНДАРТ ----------------
@@ -83,11 +83,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "Стандарт.\n\n"
-            "Подходит, если уже есть заявки, но часть из них теряется.\n\n"
-            "Бот:\n"
-            "— отвечает сразу\n"
-            "— задаёт базовые вопросы\n"
-            "— передаёт тёплые заявки"
+            "Подходит, если заявки уже есть, но часть теряется.\n\n"
+            "Система помогает:\n"
+            "— отвечать сразу\n"
+            "— уточнять запрос клиента\n"
+            "— передавать только тёплые заявки"
         )
 
     # ---------------- ПОД КЛЮЧ ----------------
@@ -97,18 +97,19 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "Под ключ.\n\n"
-            "Это полная система обработки заявок.\n\n"
-            "Бот не просто отвечает — он доводит клиента до заявки и снижает нагрузку на менеджеров."
+            "Это уже полноценная система обработки заявок.\n\n"
+            "Она снижает потери и помогает менеджерам работать только с тёплыми клиентами."
         )
 
     else:
         return
 
-    # ---------------- ОФФЕР ----------------
+    # ---------------- ОФФЕР (МЯГКИЙ) ----------------
     await update.message.reply_text(
         f"Стоимость: {context.user_data['price']}\n\n"
-        f"Оплата:\n{PAYMENT_LINK}\n\n"
-        "После оплаты нажмите «Я оплатил»",
+        "Если подходит — можно подключить по ссылке ниже:\n"
+        f"{PAYMENT_LINK}\n\n"
+        "Если есть вопросы — лучше сначала обсудим 👍",
         reply_markup=ReplyKeyboardMarkup(
             [["Я оплатил", "Задать вопрос"]],
             resize_keyboard=True
@@ -130,18 +131,19 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.job_queue.run_once(remind_6h, 21600, chat_id=update.effective_chat.id)
         context.job_queue.run_once(remind_24h, 86400, chat_id=update.effective_chat.id)
         context.job_queue.run_once(remind_48h, 172800, chat_id=update.effective_chat.id)
-
         context.chat_data["reminders_set"] = True
 
 
-# ---------------- ОПЛАТА ----------------
+# ---------------- ВОПРОСЫ ----------------
 async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
     if text == "Я оплатил":
         context.chat_data["paid"] = True
 
-        await update.message.reply_text("Принято. Начинаю работу 👍")
+        await update.message.reply_text(
+            "Принял оплату 👍 Начинаю работу."
+        )
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
@@ -149,7 +151,21 @@ async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "Задать вопрос":
-        await update.message.reply_text("Напишите вопрос, отвечу лично.")
+        context.user_data["step"] = "question"
+
+        await update.message.reply_text(
+            "Хорошо 👍 Напишите вопрос — отвечу вам здесь."
+        )
+
+    elif context.user_data.get("step") == "question":
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=f"Вопрос клиента:\n\n{text}"
+        )
+
+        await update.message.reply_text(
+            "Спасибо, передал. Ответим вам в ближайшее время 👍"
+        )
 
 
 # ---------------- RUN ----------------
