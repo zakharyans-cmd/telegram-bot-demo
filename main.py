@@ -11,9 +11,9 @@ PAYMENT_LINK = "https://your-payment-link.ru"
 # ---------------- КНОПКИ ----------------
 tariff_menu = ReplyKeyboardMarkup(
     [
+        ["Стандарт — 50 000₽ ⭐ Рекомендуем"],
         ["Базовый — 30 000₽"],
-        ["Стандарт — 40 000₽"],
-        ["Под ключ — 60 000₽"]
+        ["Под ключ — 70 000₽"]
     ],
     resize_keyboard=True
 )
@@ -24,9 +24,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.chat_data.clear()
 
+    text = (update.message.text or "").lower()
+
+    if any(x in text for x in ["цена", "стоимость", "сколько"]):
+        intro = (
+            "Привет 👋\n"
+            "Подберу подходящий вариант под вашу задачу и покажу стоимость.\n\n"
+        )
+    elif any(x in text for x in ["как", "что", "расскажи", "интересно"]):
+        intro = (
+            "Привет 👋\n"
+            "Коротко объясню, как это работает и чем может быть полезно.\n\n"
+        )
+    else:
+        intro = (
+            "Привет 👋\n"
+            "Я помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
+        )
+
     await update.message.reply_text(
-        "Помогаю бизнесу не терять заявки и превращать обращения в клиентов.\n\n"
-        "Выберите вариант:",
+        intro +
+        "Выберите вариант, который ближе к вашей задаче:",
         reply_markup=tariff_menu
     )
 
@@ -35,54 +53,51 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    # ---------------- БАЗОВЫЙ ----------------
-    if text == "Базовый — 30 000₽":
+    # ---------------- 50K (ОСНОВНОЙ) ----------------
+    if text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
+        context.user_data["tariff"] = "Стандарт"
+        context.user_data["price"] = "50k"
+
+        message = (
+            "Стандарт ⭐\n\n"
+            "Оптимальное решение для большинства бизнесов.\n\n"
+            "Система:\n"
+            "— быстро отвечает клиентам\n"
+            "— уточняет запрос\n"
+            "— отсекает случайные обращения\n\n"
+            "Итог — больше качественных диалогов без лишней нагрузки."
+        )
+
+    # ---------------- 30K ----------------
+    elif text == "Базовый — 30 000₽":
         context.user_data["tariff"] = "Базовый"
         context.user_data["price"] = "30k"
 
         message = (
             "Базовый вариант.\n\n"
-            "Подходит, если сейчас главное — не терять заявки.\n"
-            "Бот берёт первичные обращения и быстро отвечает клиентам,\n"
-            "чтобы они не уходили, пока вы заняты."
+            "Подходит, если важно не терять входящие обращения.\n"
+            "Быстрая первичная обработка без дополнительной логики."
         )
 
-    # ---------------- СТАНДАРТ ----------------
-    elif text == "Стандарт — 40 000₽":
-        context.user_data["tariff"] = "Стандарт"
-        context.user_data["price"] = "40k"
-
-        message = (
-            "Стандарт.\n\n"
-            "Это уже про контроль качества заявок.\n\n"
-            "Бот:\n"
-            "— быстро отвечает\n"
-            "— отсеивает случайные обращения\n"
-            "— оставляет только заинтересованных клиентов\n\n"
-            "Меньше мусора → больше нормальных диалогов."
-        )
-
-    # ---------------- ПОД КЛЮЧ ----------------
-    elif text == "Под ключ — 60 000₽":
+    # ---------------- 70K ----------------
+    elif text == "Под ключ — 70 000₽":
         context.user_data["tariff"] = "Под ключ"
-        context.user_data["price"] = "60k"
+        context.user_data["price"] = "70k"
 
         message = (
             "Под ключ.\n\n"
-            "Это полноценная система обработки заявок.\n\n"
-            "Она не просто отвечает — она прогревает клиента и доводит его до готового запроса.\n"
-            "Фактически — первый уровень продаж автоматизирован."
+            "Полная система обработки обращений.\n"
+            "Бот берёт на себя первичный диалог и подготовку клиента перед передачей менеджеру."
         )
 
     else:
         return
 
-    # ---------------- ОФФЕР (ПРЕМИУМ-СТИЛЬ) ----------------
+    # ---------------- ОФФЕР ----------------
     await update.message.reply_text(
         message + "\n\n"
         f"Стоимость: {context.user_data['price']}\n\n"
-        f"Подключение по ссылке:\n{PAYMENT_LINK}\n\n"
-        "Если есть вопросы — можно задать, с вами свяжется менеджер.",
+        f"Оплата:\n{PAYMENT_LINK}",
         reply_markup=ReplyKeyboardMarkup(
             [["Я оплатил", "Задать вопрос"]],
             resize_keyboard=True
@@ -93,9 +108,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            "Заявка\n\n"
             f"Тариф: {context.user_data['tariff']}\n"
-            f"Цена: {context.user_data['price']}"
+            f"Стоимость: {context.user_data['price']}"
         )
     )
 
@@ -109,12 +123,12 @@ async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.chat_data["paid"] = True
 
         await update.message.reply_text(
-            "Принято 👍 начинаем работу."
+            "Принято. Начинаем работу 👍"
         )
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="Оплата получена — проверить"
+            text="Оплата получена"
         )
 
     # ❓ ВОПРОС
@@ -122,11 +136,10 @@ async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["step"] = "question"
 
         await update.message.reply_text(
-            "Конечно 👍\n"
-            "С вами свяжется менеджер и ответит в Telegram."
+            "С Вами скоро свяжутся 👍"
         )
 
-    # 💬 ОТВЕТ НА ВОПРОС
+    # 💬 СООБЩЕНИЕ
     elif context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
@@ -134,8 +147,7 @@ async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "Спасибо 👍\n"
-            "С вами свяжется менеджер и поможет разобраться."
+            "С Вами скоро свяжутся 👍"
         )
 
 
