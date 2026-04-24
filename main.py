@@ -18,9 +18,9 @@ tariff_menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-question_menu = ReplyKeyboardMarkup(
+action_menu = ReplyKeyboardMarkup(
     [
-        ["Я оплатил", "Пример", "Задать вопрос"]
+        ["Я оплатил", "Результат", "Задать вопрос"]
     ],
     resize_keyboard=True
 )
@@ -33,7 +33,7 @@ async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Если актуально — помогу подобрать оптимальный вариант под вашу задачу 👌"
+        text="Если актуально — помогу подобрать подходящий вариант 👌"
     )
 
 
@@ -43,7 +43,7 @@ async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Часто клиенты возвращаются позже, чтобы спокойно всё решить. Я на связи 👍"
+        text="Можно спокойно вернуться к этому позже — я на связи 👍"
     )
 
 
@@ -53,7 +53,7 @@ async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text="Закрою диалог, но если понадобится — просто напишите, помогу 👍"
+        text="Закрою диалог, но если понадобится — просто напишите 👍"
     )
 
 
@@ -69,39 +69,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.chat_data.clear()
 
-    intro = "Привет 👋\nЯ помогаю бизнесу не терять клиентов и превращать обращения в заявки.\n\n"
-
     await update.message.reply_text(
-        intro + "Выберите вариант:",
+        "Привет 👋\n"
+        "Я помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
+        "Выберите вариант:",
         reply_markup=tariff_menu
     )
 
 
-# ---------------- ПРИМЕР ----------------
-async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ---------------- РЕЗУЛЬТАТ ----------------
+async def send_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     tariff = context.user_data.get("tariff")
 
     if tariff == "Базовый":
         msg = (
-            "📌 Пример:\n\n"
-            "Когда нет постоянного администратора, сообщения приходят в разное время "
-            "и часть обращений легко потерять.\n\n"
-            "Система фиксирует каждое сообщение, чтобы клиент не исчез."
+            "Результат:\n\n"
+            "Система фиксирует каждое сообщение 24/7 и ни один клиент не потеряется"
         )
 
     elif tariff == "Стандарт":
         msg = (
-            "📌 Пример:\n\n"
-            "Клиент написал и не получил быстрый ответ — интерес начинает снижаться.\n\n"
-            "Система продолжает диалог и удерживает внимание до контакта."
+            "Результат:\n\n"
+            "Интерес клиента не падает, даже если он написал ночью — "
+            "система продолжает диалог и удерживает внимание до контакта"
         )
 
     elif tariff == "Под ключ":
         msg = (
-            "📌 Пример:\n\n"
-            "Клиенты пишут в разное время и часто не доходят до общения с менеджером.\n\n"
-            "Система сама отвечает, уточняет запрос и передаёт уже заинтересованных клиентов."
+            "Результат:\n\n"
+            "Общение с клиентами выстроено и контролируется — "
+            "к вам приходят уже подготовленные к диалогу люди"
         )
 
     else:
@@ -114,9 +112,9 @@ async def send_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    # пример
-    if text == "Пример":
-        await send_example(update, context)
+    # результат
+    if text == "Результат":
+        await send_result(update, context)
         return
 
     # вопрос
@@ -125,11 +123,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "С Вами скоро свяжутся 👍"
-        )
-
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text="Вопрос"
         )
         return
 
@@ -163,36 +156,40 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["tariff"] = "Базовый"
 
         msg = (
-            "🟢 Базовый вариант.\n\n"
-            "Роль: приём сообщений.\n"
-            "Помогает не терять обращения клиентов."
+            "Базовый вариант\n\n"
+            "Подходит для простого приема обращений и записи на услугу\n\n"
+            "— быстрые ответы\n"
+            "— отсев случайных обращений"
         )
 
     elif text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
         context.user_data["tariff"] = "Стандарт"
 
         msg = (
-            "🔵 Стандарт ⭐\n\n"
-            "Роль: ведение диалога.\n"
-            "Помогает удерживать клиента и доводить его до интереса."
+            "Стандарт ⭐\n\n"
+            "Оптимальное решение для большинства бизнесов\n"
+            "Система помогает быстро отвечать, удерживать клиента и его интерес\n\n"
+            "— настройка логики под ваш бизнес\n"
+            "— настройка сценария"
         )
 
     elif text == "Под ключ — 70 000₽":
         context.user_data["tariff"] = "Под ключ"
 
         msg = (
-            "🔴 Под ключ.\n\n"
-            "Роль: полный контроль потока.\n"
-            "Система обрабатывает обращения и передаёт только заинтересованных клиентов."
+            "Под ключ\n\n"
+            "Полноценная система обработки заявок, прогревает клиента и доводит до готового запроса\n\n"
+            "— не участвуете в рутине — нет лишней нагрузки\n"
+            "— передача вам тёплых клиентов"
         )
 
     else:
         return
 
+    # сообщение + оплата
     await update.message.reply_text(
-        msg + "\n\n"
-        f"Оплата:\n{PAYMENT_LINK}",
-        reply_markup=question_menu
+        msg + "\n\nОплата:\n" + PAYMENT_LINK,
+        reply_markup=action_menu
     )
 
     await context.bot.send_message(
@@ -200,12 +197,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=context.user_data.get("tariff", "")
     )
 
-    # 👉 запускаем дожим
+    # запуск дожима
     if not context.chat_data.get("paid"):
         start_reminders(context, update.effective_chat.id)
 
 
-# ---------------- RUN ----------------
+# ---------------- ЗАПУСК ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
