@@ -19,6 +19,14 @@ tariff_menu = ReplyKeyboardMarkup(
 )
 
 
+question_menu = ReplyKeyboardMarkup(
+    [
+        ["Я оплатил", "Пример", "Задать вопрос"]
+    ],
+    resize_keyboard=True
+)
+
+
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -54,21 +62,21 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Когда у бизнеса нет постоянного администратора, "
                 "сообщения от клиентов могут приходить в разное время, "
                 "и не всегда получается ответить сразу.\n\n"
-                "Система помогает не терять такие обращения и фиксирует интерес клиента."
+                "Система помогает не терять такие обращения."
             )
 
         elif tariff == "Стандарт":
             msg = (
                 "📌 Стандарт пример:\n\n"
-                "Клиенты часто пишут и не дожидаются ответа, если он задерживается.\n\n"
-                "Система сразу реагирует, уточняет запрос и помогает довести человека до следующего шага."
+                "Клиенты часто пишут и не дожидаются ответа.\n\n"
+                "Система сразу реагирует, уточняет запрос и ведёт диалог дальше."
             )
 
         elif tariff == "Под ключ":
             msg = (
                 "📌 Под ключ пример:\n\n"
                 "В загруженных бизнесах менеджеры не успевают обрабатывать все обращения.\n\n"
-                "Система берёт первичный диалог на себя и передаёт уже тёплого клиента."
+                "Система берёт первичный диалог на себя и передаёт тёплого клиента."
             )
 
         else:
@@ -84,12 +92,28 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "С Вами скоро свяжутся 👍"
         )
+
+        # уведомление тебе СРАЗУ
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "❓ НОВЫЙ ЗАПРОС\n\n"
+                f"Тариф: {context.user_data.get('tariff', 'не выбран')}\n"
+                f"Username: @{update.effective_user.username if update.effective_user.username else 'нет'}\n"
+                f"Chat ID: {update.effective_chat.id}"
+            )
+        )
         return
 
+    # текст вопроса клиента
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"Вопрос клиента:\n\n{text}"
+            text=(
+                "💬 ВОПРОС КЛИЕНТА:\n\n"
+                f"{text}\n\n"
+                f"Chat ID: {update.effective_chat.id}"
+            )
         )
 
         await update.message.reply_text(
@@ -107,7 +131,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="Оплата получена"
+            text="💰 ОПЛАТА ПОЛУЧЕНА"
         )
         return
 
@@ -151,17 +175,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message + "\n\n"
         f"Стоимость: {context.user_data['price']}\n\n"
         f"Оплата:\n{PAYMENT_LINK}",
-        reply_markup=ReplyKeyboardMarkup(
-            [["Я оплатил", "Пример", "Задать вопрос"]],
-            resize_keyboard=True
-        )
+        reply_markup=question_menu
     )
 
+    # уведомление админу
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            f"Тариф: {context.user_data['tariff']}\n"
-            f"Стоимость: {context.user_data['price']}"
+            "📩 ВЫБРАН ТАРИФ\n\n"
+            f"{context.user_data['tariff']} — {context.user_data['price']}\n"
+            f"User: @{update.effective_user.username if update.effective_user.username else 'нет'}"
         )
     )
 
