@@ -120,7 +120,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await update.message.reply_text(
                 "Решается системой обработки заявок.\n\n"
-                "Есть 3 уровня — в зависимости от глубины автоматизации 👇",
+                "Есть 3 уровня 👇",
                 reply_markup=tariff_menu
             )
         return
@@ -155,7 +155,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # ---------------- ОПЛАТА ----------------
+    # ---------------- оплата ----------------
     if text == "я оплатил":
         context.application.chat_data[chat_id]["paid"] = True
 
@@ -167,12 +167,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ---------------- РЕЗУЛЬТАТ ----------------
+    # ---------------- результат ----------------
     if text == "результат":
         await send_result(update, context)
         return
 
-    # ---------------- fallback (ВАЖНО) ----------------
+    # ---------------- fallback ----------------
     await update.message.reply_text(
         "Нажмите кнопку ниже 👇",
         reply_markup=main_menu
