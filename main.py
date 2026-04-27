@@ -4,182 +4,205 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 509239406
+
 PAYMENT_LINK = "https://your-payment-link.ru"
 
 
 # ---------------- КНОПКИ ----------------
-main_menu = ReplyKeyboardMarkup(
-    [["Разобрать ситуацию"]],
-    resize_keyboard=True
-)
-
 tariff_menu = ReplyKeyboardMarkup(
     [
+        ["Стандарт — 50 000₽ ⭐ Рекомендуем"],
         ["Базовый — 30 000₽"],
-        ["Стандарт — 50 000₽ ⭐"],
         ["Под ключ — 70 000₽"]
     ],
     resize_keyboard=True
 )
 
-after_menu = ReplyKeyboardMarkup(
-    [["Я оплатил", "Результат"]],
+action_menu = ReplyKeyboardMarkup(
+    [
+        ["Я оплатил", "Результат", "Задать вопрос"]
+    ],
     resize_keyboard=True
 )
 
 
 # ---------------- ДОЖИМ ----------------
-async def remind(context: ContextTypes.DEFAULT_TYPE):
-    chat_id = context.job.data
-
-    chat_data = context.application.chat_data.get(chat_id, {})
-    if chat_data.get("paid"):
+async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
         return
 
     await context.bot.send_message(
-        chat_id=chat_id,
-        text="Если актуально — могу помочь закрыть вопрос с потерей заявок 👌"
+        chat_id=context.job.chat_id,
+        text="Если актуально — помогу подобрать подходящий вариант 👌"
+    )
+
+
+async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="Можно спокойно вернуться к этому позже — я на связи 👍"
+    )
+
+
+async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
+    if context.chat_data.get("paid"):
+        return
+
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="Закрою диалог, но если понадобится — просто напишите 👍"
     )
 
 
 def start_reminders(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
-    context.job_queue.run_once(remind, 21600, chat_id=chat_id, data=chat_id)
-    context.job_queue.run_once(remind, 86400, chat_id=chat_id, data=chat_id)
-    context.job_queue.run_once(remind, 172800, chat_id=chat_id, data=chat_id)
+    job = context.job_queue
+    job.run_once(remind_6h, 21600, chat_id=chat_id)
+    job.run_once(remind_24h, 86400, chat_id=chat_id)
+    job.run_once(remind_48h, 172800, chat_id=chat_id)
 
 
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-
     context.user_data.clear()
-    context.user_data["step"] = "start"
-
-    context.application.chat_data.setdefault(chat_id, {})
-    context.application.chat_data[chat_id]["paid"] = False
+    context.chat_data.clear()
 
     await update.message.reply_text(
-        "Привет 👋\n\n"
-        "Покажу, почему бизнес теряет заявки и как это исправить.",
-        reply_markup=main_menu
+        "Привет 👋\n"
+        "Я помогаю бизнесу не терять клиентов и превращать обращения в продажи.\n\n"
+        "Выберите вариант:",
+        reply_markup=tariff_menu
     )
 
 
 # ---------------- РЕЗУЛЬТАТ ----------------
 async def send_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     tariff = context.user_data.get("tariff")
 
     if tariff == "Базовый":
-        msg = "Результат: заявки перестают теряться даже при медленных ответах."
+        msg = (
+            "Результат:\n\n"
+            "Система фиксирует каждое сообщение 24/7 и ни один клиент не потеряется"
+        )
+
     elif tariff == "Стандарт":
-        msg = "Результат: клиент сам доводится до диалога."
+        msg = (
+            "Результат:\n\n"
+            "Интерес клиента не падает, даже если он написал ночью — "
+            "система продолжает диалог и удерживает внимание до контакта"
+        )
+
     elif tariff == "Под ключ":
-        msg = "Результат: приходят уже тёплые заявки."
+        msg = (
+            "Результат:\n\n"
+            "Общение с клиентами выстроено и контролируется — "
+            "к вам приходят уже подготовленные к диалогу люди"
+        )
+
     else:
-        msg = "Сначала выберите тариф."
+        msg = "Сначала выберите вариант."
 
     await update.message.reply_text(msg)
 
 
-# ---------------- ЛОГИКА ----------------
+# ---------------- ОСНОВНАЯ ЛОГИКА ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    raw_text = update.message.text or ""
-    text = raw_text.strip().lower()
+    text = update.message.text
 
-    chat_id = update.effective_chat.id
-    step = context.user_data.get("step")
-
-    paid = context.application.chat_data.get(chat_id, {}).get("paid", False)
-
-    # ---------------- вход ----------------
-    if text == "разобрать ситуацию":
-        context.user_data["step"] = "diagnosis"
-
-        await update.message.reply_text(
-            "Что ближе к вашей ситуации?\n\n"
-            "👉 мало заявок\n"
-            "👉 заявки есть, но они теряются"
-        )
-        return
-
-    # ---------------- диагностика ----------------
-    if step == "diagnosis":
-        context.user_data["step"] = "pain"
-
-        await update.message.reply_text(
-            "Понял.\n\n"
-            "До 40% клиентов теряется из-за отсутствия быстрого ответа.\n\n"
-            "Хочешь покажу решение?"
-        )
-        return
-
-    # ---------------- боль ----------------
-    if step == "pain":
-        if text in ["да", "хочу", "ок", "покажи"]:
-            context.user_data["step"] = "offer"
-
-            await update.message.reply_text(
-                "Решается системой обработки заявок.\n\n"
-                "Есть 3 уровня 👇",
-                reply_markup=tariff_menu
-            )
-        return
-
-    # ---------------- тарифы ----------------
-    if "30 000" in text:
-        tariff = "Базовый"
-    elif "50 000" in text:
-        tariff = "Стандарт"
-    elif "70 000" in text:
-        tariff = "Под ключ"
-    else:
-        tariff = None
-
-    if tariff:
-        context.user_data["tariff"] = tariff
-
-        await update.message.reply_text(
-            f"Отлично 👍\n\n"
-            f"👉 Оплата: {PAYMENT_LINK}\n\n"
-            "После оплаты нажмите «Я оплатил»",
-            reply_markup=after_menu
-        )
-
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"Выбран тариф: {tariff}"
-        )
-
-        if not paid:
-            start_reminders(context, chat_id)
-
-        return
-
-    # ---------------- оплата ----------------
-    if text == "я оплатил":
-        context.application.chat_data[chat_id]["paid"] = True
-
-        await update.message.reply_text("Принято 👍 начинаем работу")
-
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"💰 Оплата подтверждена ({chat_id})"
-        )
-        return
-
-    # ---------------- результат ----------------
-    if text == "результат":
+    # результат
+    if text == "Результат":
         await send_result(update, context)
         return
 
-    # ---------------- fallback ----------------
+    # вопрос
+    if text == "Задать вопрос":
+        context.user_data["step"] = "question"
+
+        await update.message.reply_text(
+            "С Вами скоро свяжутся 👍"
+        )
+        return
+
+    if context.user_data.get("step") == "question":
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=update.message.text
+        )
+
+        await update.message.reply_text(
+            "С Вами скоро свяжутся 👍"
+        )
+        return
+
+    # оплата
+    if text == "Я оплатил":
+        context.chat_data["paid"] = True
+
+        await update.message.reply_text(
+            "Принято. Начинаем работу 👍"
+        )
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text="Оплата"
+        )
+        return
+
+    # тарифы
+    if text == "Базовый — 30 000₽":
+        context.user_data["tariff"] = "Базовый"
+
+        msg = (
+            "Базовый вариант\n\n"
+            "Подходит для простого приема обращений и записи на услугу\n\n"
+            "— быстрые ответы\n"
+            "— отсев случайных обращений"
+        )
+
+    elif text == "Стандарт — 50 000₽ ⭐ Рекомендуем":
+        context.user_data["tariff"] = "Стандарт"
+
+        msg = (
+            "Стандарт ⭐\n\n"
+            "Оптимальное решение для большинства бизнесов\n"
+            "Система помогает быстро отвечать, удерживать клиента и его интерес\n\n"
+            "— настройка логики под ваш бизнес\n"
+            "— настройка сценария"
+        )
+
+    elif text == "Под ключ — 70 000₽":
+        context.user_data["tariff"] = "Под ключ"
+
+        msg = (
+            "Под ключ\n\n"
+            "Полноценная система обработки заявок, прогревает клиента и доводит до готового запроса\n\n"
+            "— не участвуете в рутине — нет лишней нагрузки\n"
+            "— передача вам тёплых клиентов"
+        )
+
+    else:
+        return
+
+    # сообщение + оплата
     await update.message.reply_text(
-        "Нажмите кнопку ниже 👇",
-        reply_markup=main_menu
+        msg + "\n\nОплата:\n" + PAYMENT_LINK,
+        reply_markup=action_menu
     )
 
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=context.user_data.get("tariff", "")
+    )
 
-# ---------------- APP ----------------
+    # запуск дожима
+    if not context.chat_data.get("paid"):
+        start_reminders(context, update.effective_chat.id)
+
+
+# ---------------- ЗАПУСК ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
