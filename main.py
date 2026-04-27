@@ -28,9 +28,6 @@ action_menu = ReplyKeyboardMarkup(
 
 # ---------------- ДОЖИМ ----------------
 async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
-    if context.chat_data.get("paid"):
-        return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text="Если актуально — помогу подобрать подходящий вариант 👌"
@@ -38,9 +35,6 @@ async def remind_6h(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
-    if context.chat_data.get("paid"):
-        return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text="Можно спокойно вернуться к этому позже — я на связи 👍"
@@ -48,9 +42,6 @@ async def remind_24h(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
-    if context.chat_data.get("paid"):
-        return
-
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text="Закрою диалог, но если понадобится — просто напишите 👍"
@@ -58,10 +49,22 @@ async def remind_48h(context: ContextTypes.DEFAULT_TYPE):
 
 
 def start_reminders(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
-    job = context.job_queue
-    job.run_once(remind_6h, 21600, chat_id=chat_id)
-    job.run_once(remind_24h, 86400, chat_id=chat_id)
-    job.run_once(remind_48h, 172800, chat_id=chat_id)
+    jobs = []
+
+    jobs.append(context.job_queue.run_once(remind_6h, 21600, chat_id=chat_id))
+    jobs.append(context.job_queue.run_once(remind_24h, 86400, chat_id=chat_id))
+    jobs.append(context.job_queue.run_once(remind_48h, 172800, chat_id=chat_id))
+
+    context.chat_data["jobs"] = jobs
+    context.chat_data["reminders_started"] = True
+
+
+def stop_reminders(context: ContextTypes.DEFAULT_TYPE):
+    for job in context.chat_data.get("jobs", []):
+        job.schedule_removal()
+
+    context.chat_data["jobs"] = []
+    context.chat_data["reminders_started"] = False
 
 
 # ---------------- START ----------------
@@ -79,7 +82,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- РЕЗУЛЬТАТ ----------------
 async def send_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     tariff = context.user_data.get("tariff")
 
     if tariff == "Базовый":
@@ -122,24 +124,29 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["step"] = "question"
 
         await update.message.reply_text(
-            "С Вами скоро свяжутся 👍"
+            "Напишите ваш вопрос — я передам его специалисту 👇"
         )
         return
 
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=update.message.text
+            text=f"Вопрос от клиента:\n\n{update.message.text}"
         )
 
         await update.message.reply_text(
             "С Вами скоро свяжутся 👍"
         )
+
+        context.user_data["step"] = None
         return
 
     # оплата
     if text == "Я оплатил":
         context.chat_data["paid"] = True
+
+        # стоп напоминаний
+        stop_reminders(context)
 
         await update.message.reply_text(
             "Принято. Начинаем работу 👍"
@@ -147,7 +154,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text="Оплата"
+            text="💰 Клиент сообщил об оплате"
         )
         return
 
@@ -188,17 +195,20 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # сообщение + оплата
     await update.message.reply_text(
-        msg + "\n\nОплата:\n" + PAYMENT_LINK,
+        msg +
+        "\n\nГотовы начать?\n\n"
+        f"👉 Оплатить: {PAYMENT_LINK}\n\n"
+        "После оплаты нажмите «Я оплатил»",
         reply_markup=action_menu
     )
 
     await context.bot.send_message(
         chat_id=ADMIN_ID,
-        text=context.user_data.get("tariff", "")
+        text=f"Клиент выбрал тариф: {context.user_data.get('tariff', '')}"
     )
 
-    # запуск дожима
-    if not context.chat_data.get("paid"):
+    # запуск дожима (только 1 раз)
+    if not context.chat_data.get("reminders_started"):
         start_reminders(context, update.effective_chat.id)
 
 
