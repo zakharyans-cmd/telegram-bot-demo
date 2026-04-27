@@ -86,7 +86,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # вопрос
     if text == "Задать вопрос":
         context.user_data["step"] = "question"
-        await update.message.reply_text("Напишите ваш вопрос 👇")
+
+        # 🔥 ИЗМЕНЕНО ТОЛЬКО ЗДЕСЬ
+        await update.message.reply_text(
+            "Напишите ваш вопрос — я передам его специалисту 👇"
+        )
         return
 
     if context.user_data.get("step") == "question":
