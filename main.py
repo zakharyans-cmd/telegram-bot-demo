@@ -45,24 +45,6 @@ pay_menu = ReplyKeyboardMarkup(
 )
 
 
-# ---------------- НАПОМИНАНИЯ ----------------
-async def payment_reminder(context: ContextTypes.DEFAULT_TYPE):
-    chat_id = context.job.chat_id
-    hours = context.job.data
-
-    user_data = context.application.user_data.get(chat_id, {})
-    if user_data.get("paid") or user_data.get("asked"):
-        return
-
-    messages = {
-        6: "Напомню 👇\n\nВы смотрели подключение системы.\nЕсли остались вопросы — можете задать их здесь.",
-        24: "Возвращаюсь к вам 👇\n\nТакие решения обычно быстро окупаются за счёт возврата потерянных клиентов.",
-        48: "Последний раз напомню 👇\n\nЕсли тема ещё актуальна — напишите, подскажу лучший вариант под вашу задачу."
-    }
-
-    await context.bot.send_message(chat_id=chat_id, text=messages[hours])
-
-
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -78,12 +60,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ---------------- ОСНОВНАЯ ЛОГИКА ----------------
+# ---------------- ЛОГИКА ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
     text = update.message.text
+    user = update.effective_user
+
 
     # К тарифам
     if text == "К тарифам":
@@ -94,6 +78,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=tariff_menu
         )
         return
+
 
     # Сравнение тарифов
     if text == "Сравнить тарифы":
@@ -119,6 +104,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+
     # Вопрос
     if text == "Задать вопрос":
         context.user_data["step"] = "question"
@@ -129,14 +115,24 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"Вопрос от {update.effective_user.id}\nТариф: {context.user_data.get('tariff')}\n\n{update.message.text}"
+            text=(
+                "📩 НОВЫЙ ВОПРОС\n\n"
+                f"👤 Имя: {user.first_name}\n"
+                f"🔗 Username: @{user.username if user.username else 'нет username'}\n"
+                f"🆔 ID: {user.id}\n"
+                f"💼 Тариф: {context.user_data.get('tariff')}\n\n"
+                f"💬 Сообщение:\n{update.message.text}"
+            )
         )
+
         await update.message.reply_text("С вами скоро свяжутся 👍")
         context.user_data["step"] = None
         return
+
 
     # Я оплатил
     if text == "Я оплатил":
@@ -144,13 +140,20 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"Пользователь {update.effective_user.id} сообщил об оплате\nТариф: {context.user_data.get('tariff')}"
+            text=(
+                "💰 ОПЛАТА\n\n"
+                f"👤 Имя: {user.first_name}\n"
+                f"🔗 Username: @{user.username if user.username else 'нет username'}\n"
+                f"🆔 ID: {user.id}\n"
+                f"💼 Тариф: {context.user_data.get('tariff')}"
+            )
         )
 
         await update.message.reply_text("Спасибо! Мы проверим оплату и свяжемся с вами 👍")
         return
 
-    # Оплатить
+
+    # Оплата меню
     if text == "Оплатить":
         await update.message.reply_text(
             "Выберите тариф для оплаты:",
@@ -158,7 +161,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Выбор тарифа
+
+    # выбор тарифа
     if text in ["Базовый", "Стандарт ⭐ Рекомендуем", "Под ключ"]:
 
         mapping = {
@@ -204,7 +208,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=action_menu)
         return
 
-    # Оплата тарифа
+
+    # оплата тарифа
     if text in PAY_LINKS:
         link = PAY_LINKS[text]
 
@@ -224,7 +229,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # fallback
+
     await update.message.reply_text("Пожалуйста, используйте кнопки ниже 👇")
 
 
