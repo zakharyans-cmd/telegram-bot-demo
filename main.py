@@ -14,63 +14,46 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "509239406"))
 if not TOKEN:
     raise ValueError("BOT_TOKEN не задан")
 
-
 # ---------------- ОПЛАТА ----------------
 PAY_LINK_STANDARD = "https://yookassa.ru/my/i/afs77IHpLI6Y/l"
 
-
 # ---------------- КНОПКИ ----------------
 main_menu = ReplyKeyboardMarkup(
-    [
-        ["Подобрать вариант"],
-        ["Посмотреть тарифы", "Задать вопрос"]
-    ],
+    [["Подобрать вариант"], ["Посмотреть тарифы", "Задать вопрос"]],
     resize_keyboard=True
 )
 
 warm_menu = ReplyKeyboardMarkup(
-    [
-        ["Продолжить подбор"],
-        ["Сразу к оплате", "Задать вопрос"]
-    ],
+    [["Продолжить подбор"], ["Сразу к оплате", "Задать вопрос"]],
     resize_keyboard=True
 )
 
 problem_menu = ReplyKeyboardMarkup(
-    [
-        ["Теряю заявки"],
-        ["Мало продаж"],
-        ["Хочу автоматизацию"]
-    ],
+    [["Теряю заявки"], ["Мало продаж"], ["Хочу автоматизацию"]],
     resize_keyboard=True
 )
 
 tariff_menu = ReplyKeyboardMarkup(
-    [
-        ["Базовый"],
-        ["Стандарт ⭐ Рекомендуем"],
-        ["Под ключ"]
-    ],
+    [["Базовый"], ["Стандарт ⭐ Рекомендуем"], ["Под ключ"]],
     resize_keyboard=True
 )
 
 pay_menu = ReplyKeyboardMarkup(
-    [
-        ["Оплатить 50 000₽"],
-        ["К тарифам"]
-    ],
+    [["Оплатить 50 000₽"], ["К тарифам"]],
     resize_keyboard=True
 )
-
 
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         context.user_data.clear()
 
+        context.user_data["stage"] = "start"
+        context.user_data["score"] = 0
+
         user_type = "cold"
 
-        if context.args and len(context.args) > 0 and context.args[0] == "warm":
+        if context.args and context.args[0] == "warm":
             user_type = "warm"
 
         context.user_data["user_type"] = user_type
@@ -95,7 +78,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error in start: {e}")
 
 
-# ---------------- ЛОГИКА ----------------
+# ---------------- ХЕНДЛЕР ----------------
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
@@ -103,93 +86,57 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user = update.effective_user
 
+    stage = context.user_data.get("stage", "start")
+
 
     # ---------------- ПОДБОР ----------------
     if text in ["Подобрать вариант", "Продолжить подбор"]:
+        context.user_data["stage"] = "problem"
+        context.user_data["score"] += 1
+
         await update.message.reply_text(
-            "Понял Вас 👍\n\n"
-            "Скажите, что сейчас для Вас наиболее актуально?",
+            "Понял Вас 👍\n\nЧто сейчас для Вас наиболее актуально?",
             reply_markup=problem_menu
         )
         return
 
 
     # ---------------- ПРОБЛЕМЫ ----------------
-    if text == "Теряю заявки":
+    if text in ["Теряю заявки", "Мало продаж", "Хочу автоматизацию"]:
+        if stage not in ["problem"]:
+            return
+
         context.user_data["problem"] = text
+        context.user_data["stage"] = "tariff"
+        context.user_data["score"] += 2
 
         await update.message.reply_text(
-            "Понял Вас.\n\n"
-            "Это значит, что часть клиентов теряется на этапе переписки или ответа.\n\n"
-            "Есть 3 варианта решения:",
-            reply_markup=tariff_menu
-        )
-        return
-
-
-    if text == "Мало продаж":
-        context.user_data["problem"] = text
-
-        await update.message.reply_text(
-            "Понял Вас.\n\n"
-            "Часто проблема в том, что клиент не доводится до решения.\n\n"
-            "Есть 3 варианта решения:",
-            reply_markup=tariff_menu
-        )
-        return
-
-
-    if text == "Хочу автоматизацию":
-        context.user_data["problem"] = text
-
-        await update.message.reply_text(
-            "Понял Вас.\n\n"
-            "Это про систему, которая сама ведёт клиента к заявке.\n\n"
-            "Есть 3 варианта решения:",
+            "Понял Вас 👍\n\nЕсть 3 варианта решения:",
             reply_markup=tariff_menu
         )
         return
 
 
     # ---------------- ТАРИФЫ ----------------
-    if text == "Базовый":
-        context.user_data["tariff"] = "Базовый"
+    if text in ["Базовый", "Стандарт ⭐ Рекомендуем", "Под ключ"]:
+        if stage not in ["tariff"]:
+            return
+
+        context.user_data["tariff"] = text
+        context.user_data["stage"] = "payment"
+        context.user_data["score"] += 2
+
+        if text == "Базовый":
+            desc = "Подходит, если важно перестать терять заявки."
+        elif text.startswith("Стандарт"):
+            desc = "Оптимальный вариант для роста конверсии."
+        else:
+            desc = "Полная система автоматизации и прогрева."
 
         await update.message.reply_text(
-            "Базовый вариант 👇\n\n"
-            "Подходит, если важно перестать терять входящие заявки.\n\n"
-            "— быстрые ответы\n"
-            "— фиксация заявок\n"
-            "— базовая обработка\n\n",
-            reply_markup=pay_menu
-        )
-        return
-
-
-    if text == "Стандарт ⭐ Рекомендуем":
-        context.user_data["tariff"] = "Стандарт"
-
-        await update.message.reply_text(
-            "Стандарт ⭐\n\n"
-            "Оптимальный вариант для большинства бизнесов.\n\n"
-            "— удержание клиента\n"
-            "— сценарии переписки\n"
-            "— рост конверсии\n\n"
-            "Чаще всего выбирают именно его.",
-            reply_markup=pay_menu
-        )
-        return
-
-
-    if text == "Под ключ":
-        context.user_data["tariff"] = "Под ключ"
-
-        await update.message.reply_text(
-            "Под ключ 👇\n\n"
-            "Полная система обработки клиентов.\n\n"
-            "— автоматизация\n"
-            "— прогрев\n"
-            "— максимальная конверсия",
+            f"{text} 👇\n\n{desc}\n\nПеред оплатой:\n"
+            "🔹 Вы можете начать внедрение уже сегодня\n"
+            "🔹 Средний рост конверсии 20–40%\n",
             reply_markup=pay_menu
         )
         return
@@ -198,8 +145,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ---------------- ОПЛАТА ----------------
     if text == "Оплатить 50 000₽":
         await update.message.reply_text(
-            f"Ссылка для оплаты Стандарта 👇\n\n{PAY_LINK_STANDARD}\n\n"
-            "После оплаты нажмите «Я оплатил».",
+            f"Ссылка для оплаты 👇\n\n{PAY_LINK_STANDARD}\n\n"
+            "После оплаты напишите «Я оплатил».",
             reply_markup=ReplyKeyboardMarkup(
                 [["Я оплатил"], ["К тарифам"]],
                 resize_keyboard=True
@@ -210,30 +157,39 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---------------- ОПЛАТА ФАКТ ----------------
     if text == "Я оплатил":
+        context.user_data["stage"] = "paid"
+
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=(
                 "💰 ОПЛАТА\n\n"
                 f"Имя: {user.first_name}\n"
                 f"Username: @{user.username if user.username else 'нет'}\n"
-                f"Проблема: {context.user_data.get('problem')}\n"
-                f"Тариф: {context.user_data.get('tariff')}"
+                f"Проблема: {context.user_data.get('problem', 'не указано')}\n"
+                f"Тариф: {context.user_data.get('tariff', 'не указано')}\n"
+                f"Score: {context.user_data.get('score', 0)}"
             )
         )
 
-        await update.message.reply_text("Спасибо! Проверим оплату 👍")
+        await update.message.reply_text("Спасибо! Проверяем оплату 👍")
+
+        # дожимная фраза (как ты просил)
+        await update.message.reply_text(
+            "Если возникнут вопросы — мы всегда на связи 👍"
+        )
+
         return
 
 
     # ---------------- ВОПРОС ----------------
     if text == "Задать вопрос":
-        context.user_data["step"] = "question"
+        context.user_data["stage"] = "question"
 
         await update.message.reply_text("Напишите Ваш вопрос 👇")
         return
 
 
-    if context.user_data.get("step") == "question":
+    if context.user_data.get("stage") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=(
@@ -245,14 +201,24 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text("С Вами скоро свяжутся 👍")
-        context.user_data["step"] = None
+        context.user_data["stage"] = "start"
+        return
+
+
+    # ---------------- К ТАРИФАМ ----------------
+    if text == "К тарифам":
+        context.user_data["stage"] = "tariff"
+
+        await update.message.reply_text(
+            "Выберите вариант:",
+            reply_markup=tariff_menu
+        )
         return
 
 
 # ---------------- ЗАПУСК ----------------
 app = ApplicationBuilder().token(TOKEN).build()
 
-# 🔥 ВАЖНО: убирает конфликт webhook/polling
 app.bot.delete_webhook(drop_pending_updates=True)
 
 app.add_handler(CommandHandler("start", start))
@@ -260,4 +226,3 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
 
 if __name__ == "__main__":
     print("Bot started")
-    app.run_polling()
