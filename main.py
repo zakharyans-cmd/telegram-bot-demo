@@ -9,11 +9,9 @@ if not TOKEN:
     raise ValueError("BOT_TOKEN не задан")
 
 
-# ---------------- ОПЛАТЫ ----------------
+# ---------------- ОПЛАТА ----------------
 PAY_LINKS = {
-    "Базовый — 30 000₽": "https://your-payment-link.ru/basic",
-    "Стандарт — 50 000₽ ⭐ Рекомендуем": "https://your-payment-link.ru/standard",
-    "Под ключ — 70 000₽": "https://your-payment-link.ru/full"
+    "Стандарт — 50 000₽ ⭐ Рекомендуем": "https://yookassa.ru/my/i/afs77IHpLI6Y/l"
 }
 
 
@@ -29,17 +27,24 @@ tariff_menu = ReplyKeyboardMarkup(
 
 action_menu = ReplyKeyboardMarkup(
     [
-        ["Сравнить тарифы", "Задать вопрос", "Оплатить"],
-        ["К тарифам"]
+        ["Показать как будет у меня", "Оплатить"],
+        ["Задать вопрос", "К тарифам"]
+    ],
+    resize_keyboard=True
+)
+
+cold_menu = ReplyKeyboardMarkup(
+    [
+        ["Да, покажи пример"],
+        ["Показать как будет у меня", "Оплатить"],
+        ["Сравнить тарифы", "Задать вопрос"]
     ],
     resize_keyboard=True
 )
 
 pay_menu = ReplyKeyboardMarkup(
     [
-        ["Стандарт — 50 000₽ ⭐ Рекомендуем"],
-        ["Базовый — 30 000₽"],
-        ["Под ключ — 70 000₽"]
+        ["Стандарт — 50 000₽ ⭐ Рекомендуем"]
     ],
     resize_keyboard=True
 )
@@ -49,14 +54,39 @@ pay_menu = ReplyKeyboardMarkup(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
 
-    await update.message.reply_text(
-        "Привет 👋\n\n"
-        "Большинство бизнесов теряют часть клиентов ещё на этапе переписки — даже не замечая этого.\n\n"
-        "Кто-то не дождался ответа, кто-то передумал, а кто-то просто “пропал”.\n\n"
-        "В итоге — вы теряете деньги\n"
-        "Я помогаю это исправить\n\n"
-        "Выберите вариант:",
-        reply_markup=tariff_menu
+    args = context.args
+
+    # WARM
+    if args and args[0] == "warm":
+        context.user_data["flow"] = "warm"
+
+        await update.message.reply_text(
+            "Как и обсуждали 👇\n\n"
+            "Выберите вариант:",
+            reply_markup=tariff_menu
+        )
+
+    # COLD
+    else:
+        context.user_data["flow"] = "cold"
+
+        await update.message.reply_text(
+            "Привет 👋\n\n"
+            "Большинство бизнесов теряют клиентов в переписке\n"
+            "— не отвечают вовремя\n"
+            "— теряются заявки\n"
+            "— клиент просто уходит\n\n"
+            "Это можно исправить автоматизацией\n\n"
+            "Выберите вариант 👇",
+            reply_markup=tariff_menu
+        )
+
+
+# ---------------- JOB ----------------
+async def payment_reminder(context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text=context.job.data
     )
 
 
@@ -67,170 +97,118 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text
     user = update.effective_user
+    flow = context.user_data.get("flow", "cold")
+    chat_id = update.effective_chat.id
 
 
-    # К тарифам
+    # К ТАРИФАМ
     if text == "К тарифам":
-        context.user_data.pop("tariff", None)
-
-        await update.message.reply_text(
-            "Давайте сравним варианты 👇\nВыберите тариф:",
-            reply_markup=tariff_menu
-        )
+        await update.message.reply_text("Выберите тариф 👇", reply_markup=tariff_menu)
         return
 
 
-    # Сравнение тарифов
+    # СРАВНЕНИЕ
     if text == "Сравнить тарифы":
         await update.message.reply_text(
-            "Сравнение вариантов 👇\n\n"
-            "Базовый — 30 000₽\n"
-            "Подходит, если нужно просто не терять входящие\n"
-            "— отвечает клиентам\n"
-            "— фиксирует заявки\n"
-            "— убирает “случайных”\n\n"
-            "Стандарт — 50 000₽ ⭐\n"
-            "Оптимальный вариант\n"
-            "— удерживает клиента в диалоге\n"
-            "— ведёт по сценарию\n"
-            "— доводит до контакта\n\n"
-            "👉 чаще всего выбирают именно его\n\n"
-            "Под ключ — 70 000₽\n"
-            "Максимальный результат\n"
-            "— полный прогрев клиента\n"
-            "— автоматизация общения\n"
-            "— приходят уже “тёплые” заявки\n\n"
-            "Если сомневаетесь — берите «Стандарт» 👍"
+            "Коротко 👇\n\n"
+            "Базовый — не терять входящие\n\n"
+            "Стандарт ⭐ — ведёт клиента до заявки\n\n"
+            "Под ключ — полная автоматизация\n\n"
+            "Обычно берут Стандарт"
         )
         return
 
 
-    # Вопрос
+    # ВОПРОС
     if text == "Задать вопрос":
         context.user_data["step"] = "question"
-        context.user_data["asked"] = True
-
-        await update.message.reply_text(
-            "Напишите ваш вопрос — я передам его специалисту 👇"
-        )
+        await update.message.reply_text("Напишите вопрос 👇")
         return
 
 
     if context.user_data.get("step") == "question":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=(
-                "📩 НОВЫЙ ВОПРОС\n\n"
-                f"👤 Имя: {user.first_name}\n"
-                f"🔗 Username: @{user.username if user.username else 'нет username'}\n"
-                f"🆔 ID: {user.id}\n"
-                f"💼 Тариф: {context.user_data.get('tariff')}\n\n"
-                f"💬 Сообщение:\n{update.message.text}"
-            )
+            text=f"📩 ВОПРОС\n\n{user.first_name}\n{text}"
         )
-
-        await update.message.reply_text("С вами скоро свяжутся 👍")
+        await update.message.reply_text("Ответим вам 👍")
         context.user_data["step"] = None
         return
 
 
-    # Я оплатил
-    if text == "Я оплатил":
-        context.user_data["paid"] = True
+    # ДИАГНОСТИКА
+    if text == "Показать как будет у меня":
+        context.user_data["step"] = "demo"
+        await update.message.reply_text(
+            "Напишите:\n— чем занимаетесь\n— откуда заявки"
+        )
+        return
 
+
+    if context.user_data.get("step") == "demo":
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=(
-                "💰 ОПЛАТА\n\n"
-                f"👤 Имя: {user.first_name}\n"
-                f"🔗 Username: @{user.username if user.username else 'нет username'}\n"
-                f"🆔 ID: {user.id}\n"
-                f"💼 Тариф: {context.user_data.get('tariff')}"
-            )
+            text=f"🔥 РАЗБОР\n\n{user.first_name}\n{text}"
         )
 
-        await update.message.reply_text("Спасибо! Мы проверим оплату и свяжемся с вами 👍")
+        await update.message.reply_text("Посмотрю и напишу 👍")
+        context.user_data["step"] = None
         return
 
 
-    # Оплата меню
-    if text == "Оплатить":
-        await update.message.reply_text(
-            "Выберите тариф для оплаты:",
-            reply_markup=pay_menu
-        )
-        return
-
-
-    # выбор тарифа
+    # ТАРИФ
     if text in ["Базовый", "Стандарт ⭐ Рекомендуем", "Под ключ"]:
 
-        mapping = {
-            "Базовый": "Базовый",
-            "Стандарт ⭐ Рекомендуем": "Стандарт",
-            "Под ключ": "Под ключ"
-        }
-
-        context.user_data["tariff"] = mapping[text]
+        context.user_data["tariff"] = text
 
         msg = {
-            "Базовый": (
-                "Базовый вариант\n\n"
-                "Подходит, если сейчас важно просто не терять входящие обращения\n\n"
-                "— быстрые ответы клиентам\n"
-                "— фиксация всех заявок\n"
-                "— отсев случайных обращений\n\n"
-                "Вы перестаёте терять тех, кто уже написал.\n\n"
-                "Готовы начать?"
-            ),
-            "Стандарт": (
+            "Базовый": "Базовый — чтобы не терять заявки",
+            "Стандарт ⭐ Рекомендуем": (
                 "Стандарт ⭐\n\n"
-                "Оптимальное решение для большинства бизнесов\n\n"
-                "Клиент не просто получает ответ — система удерживает его внимание и ведёт диалог дальше\n\n"
-                "— логика общения под ваш бизнес\n"
-                "— сценарии переписки\n"
-                "— удержание интереса клиента\n\n"
-                "В итоге — больше людей доходят до контакта и сделки.\n\n"
-                "Готовы начать?"
+                "— ведёт клиента\n"
+                "— не теряет заявки\n"
+                "— чаще всего выбирают его\n\n"
+                "Можно посмотреть как будет у вас"
             ),
-            "Под ключ": (
-                "Под ключ\n\n"
-                "Полноценная система обработки заявок\n\n"
-                "Клиент проходит путь от первого сообщения до готовности к диалогу\n\n"
-                "— автоматизация общения\n"
-                "— прогрев клиента\n"
-                "— формирование “тёплых” заявок\n\n"
-                "Вы получаете не просто обращения, а подготовленных клиентов.\n\n"
-                "Готовы начать?"
-            )
-        }[mapping[text]]
+            "Под ключ": "Под ключ — максимум автоматизации"
+        }[text]
 
-        await update.message.reply_text(msg, reply_markup=action_menu)
+        await update.message.reply_text(
+            msg,
+            reply_markup=action_menu if flow == "warm" else cold_menu
+        )
         return
 
 
-    # оплата тарифа
+    # ОПЛАТА
     if text in PAY_LINKS:
+
         link = PAY_LINKS[text]
 
         await update.message.reply_text(
-            f"Оплата тарифа:\n👉 {link}\n\n"
-            "После оплаты мы сразу начинаем настройку.\n"
-            "Обычно запуск занимает 1 день.\n\n"
-            "После оплаты нажмите «Я оплатил» 👍",
-            reply_markup=ReplyKeyboardMarkup([["Я оплатил"], ["К тарифам"]], resize_keyboard=True)
+            f"Оплата 👇\n{link}\n\nПосле оплаты нажмите «Я оплатил»",
+            reply_markup=ReplyKeyboardMarkup([["Я оплатил"]], resize_keyboard=True)
         )
 
-        chat_id = update.effective_chat.id
+        context.job_queue.run_once(
+            payment_reminder,
+            6 * 3600,
+            chat_id=chat_id,
+            data="Если остались вопросы — напишите"
+        )
 
-        context.job_queue.run_once(payment_reminder, 6 * 3600, chat_id=chat_id, data=6)
-        context.job_queue.run_once(payment_reminder, 24 * 3600, chat_id=chat_id, data=24)
-        context.job_queue.run_once(payment_reminder, 48 * 3600, chat_id=chat_id, data=48)
+        context.job_queue.run_once(
+            payment_reminder,
+            24 * 3600,
+            chat_id=chat_id,
+            data="Если планировали запуск — можем начать"
+        )
 
         return
 
 
-    await update.message.reply_text("Пожалуйста, используйте кнопки ниже 👇")
+    # fallback
+    await update.message.reply_text("Выберите вариант 👇")
 
 
 # ---------------- ЗАПУСК ----------------
@@ -238,3 +216,6 @@ app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
+
+if __name__ == "__main__":
+    app.run_polling()
