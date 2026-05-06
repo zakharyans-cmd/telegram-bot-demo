@@ -26,9 +26,9 @@ if not TOKEN:
     raise ValueError("BOT_TOKEN не задан")
 
 # ---------------- ОПЛАТА ----------------
-PAY_LINK_BASIC = "ССЫЛКА_30К"
-PAY_LINK_STANDARD = "https://yookassa.ru/my/i/afs77IHpLI6Y/l"
-PAY_LINK_PRO = "ССЫЛКА_70К"
+PAY_LINK_BASIC = "https://yookassa.ru/my/i/afvRwpMt2kxa/l"
+PAY_LINK_STANDARD = "https://yookassa.ru/my/i/afvR6WwgBU92/l"
+PAY_LINK_PRO = "https://yookassa.ru/my/i/afvSFHFX15eq/l"
 
 # ---------------- КНОПКИ ----------------
 main_menu = ReplyKeyboardMarkup(
@@ -94,18 +94,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["user_type"] = user_type
 
         if user_type == "warm":
+
             text = (
                 "Привет 👋\n\n"
                 "Рад Вас видеть снова.\n"
                 "Давайте быстро подберём подходящее решение под Ваш бизнес."
             )
+
             keyboard = warm_menu
 
         else:
+
             text = (
                 "Привет 👋\n\n"
                 "Я помогу Вам подобрать решение, которое поможет не терять клиентов и увеличить продажи."
             )
+
             keyboard = main_menu
 
         await update.message.reply_text(
@@ -132,6 +136,17 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Скажите, что сейчас для Вас наиболее актуально?",
             reply_markup=problem_menu
         )
+
+        return
+
+    # ---------------- СРАЗУ К ОПЛАТЕ ----------------
+    if text == "Сразу к оплате":
+
+        await update.message.reply_text(
+            "Выберите тариф 👇",
+            reply_markup=tariff_menu
+        )
+
         return
 
     # ---------------- К ТАРИФАМ ----------------
@@ -141,6 +156,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Выберите подходящий вариант 👇",
             reply_markup=tariff_menu
         )
+
         return
 
     # ---------------- ПРОБЛЕМЫ ----------------
@@ -154,6 +170,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Есть 3 варианта решения:",
             reply_markup=tariff_menu
         )
+
         return
 
     if text == "Мало продаж":
@@ -166,6 +183,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Есть 3 варианта решения:",
             reply_markup=tariff_menu
         )
+
         return
 
     if text == "Хочу автоматизацию":
@@ -178,6 +196,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Есть 3 варианта решения:",
             reply_markup=tariff_menu
         )
+
         return
 
     # ---------------- ТАРИФЫ ----------------
@@ -195,6 +214,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "— базовая обработка\n\n",
             reply_markup=pay_menu
         )
+
         return
 
     if text == "Стандарт ⭐ Рекомендуем":
@@ -212,6 +232,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Чаще всего выбирают именно его.",
             reply_markup=pay_menu
         )
+
         return
 
     if text == "Под ключ":
@@ -228,6 +249,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "— максимальная конверсия",
             reply_markup=pay_menu
         )
+
         return
 
     # ---------------- ОПЛАТА ----------------
@@ -242,6 +264,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Сначала выберите тариф 👇",
                 reply_markup=tariff_menu
             )
+
             return
 
         await update.message.reply_text(
@@ -251,6 +274,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "После оплаты нажмите «Я оплатил».",
             reply_markup=paid_menu
         )
+
         return
 
     # ---------------- ОПЛАТА ФАКТ ----------------
@@ -271,6 +295,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Спасибо! Проверим оплату 👍",
             reply_markup=main_menu
         )
+
         return
 
     # ---------------- ВОПРОС ----------------
@@ -281,6 +306,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "Напишите Ваш вопрос 👇"
         )
+
         return
 
     if context.user_data.get("step") == "question":
@@ -301,6 +327,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         context.user_data["step"] = None
+
         return
 
     # ---------------- FALLBACK ----------------
