@@ -9,37 +9,49 @@ if not TOKEN:
     raise ValueError("BOT_TOKEN не задан")
 
 
-# ---------------- ОПЛАТЫ ----------------
-PAY_LINKS = {
-    "Базовый — 30 000₽": "https://your-payment-link.ru/basic",
-    "Стандарт — 50 000₽ ⭐ Рекомендуем": "https://yookassa.ru/my/i/afs77IHpLI6Y/l",
-    "Под ключ — 70 000₽": "https://your-payment-link.ru/full"
-}
+# ---------------- ОПЛАТА ----------------
+PAY_LINK_STANDARD = "https://yookassa.ru/my/i/afs77IHpLI6Y/l"
 
 
 # ---------------- КНОПКИ ----------------
-tariff_menu = ReplyKeyboardMarkup(
+main_menu = ReplyKeyboardMarkup(
     [
-        ["Стандарт ⭐ Рекомендуем"],
-        ["Базовый"],
-        ["Под ключ"]
+        ["Подобрать вариант"],
+        ["Посмотреть тарифы", "Задать вопрос"]
     ],
     resize_keyboard=True
 )
 
-action_menu = ReplyKeyboardMarkup(
+warm_menu = ReplyKeyboardMarkup(
     [
-        ["Сравнить тарифы", "Задать вопрос", "Оплатить"],
-        ["К тарифам"]
+        ["Продолжить подбор"],
+        ["Сразу к оплате", "Задать вопрос"]
+    ],
+    resize_keyboard=True
+)
+
+problem_menu = ReplyKeyboardMarkup(
+    [
+        ["Теряю заявки"],
+        ["Мало продаж"],
+        ["Хочу автоматизацию"]
+    ],
+    resize_keyboard=True
+)
+
+tariff_menu = ReplyKeyboardMarkup(
+    [
+        ["Базовый"],
+        ["Стандарт ⭐ Рекомендуем"],
+        ["Под ключ"]
     ],
     resize_keyboard=True
 )
 
 pay_menu = ReplyKeyboardMarkup(
     [
-        ["Стандарт — 50 000₽ ⭐ Рекомендуем"],
-        ["Базовый — 30 000₽"],
-        ["Под ключ — 70 000₽"]
+        ["Оплатить 50 000₽"],
+        ["К тарифам"]
     ],
     resize_keyboard=True
 )
@@ -49,23 +61,28 @@ pay_menu = ReplyKeyboardMarkup(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
 
-    await update.message.reply_text(
-        "Привет 👋\n\n"
-        "Большинство бизнесов теряют часть клиентов ещё на этапе переписки — даже не замечая этого.\n\n"
-        "Кто-то не дождался ответа, кто-то передумал, а кто-то просто “пропал”.\n\n"
-        "В итоге — вы теряете деньги\n"
-        "Я помогаю это исправить\n\n"
-        "Выберите вариант:",
-        reply_markup=tariff_menu
-    )
+    user_type = "cold"
 
+    if context.args and context.args[0] == "warm":
+        user_type = "warm"
 
-# ---------------- JOB QUEUE FIX ----------------
-async def payment_reminder(context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=context.job.chat_id,
-        text="Напоминание: если остались вопросы — напишите 👍"
-    )
+    context.user_data["user_type"] = user_type
+
+    if user_type == "warm":
+        text = (
+            "Привет 👋\n\n"
+            "Рад Вас видеть снова.\n"
+            "Давайте быстро подберём подходящее решение под Ваш бизнес."
+        )
+        keyboard = warm_menu
+    else:
+        text = (
+            "Привет 👋\n\n"
+            "Я помогу Вам подобрать решение, которое поможет не терять клиентов и увеличить продажи."
+        )
+        keyboard = main_menu
+
+    await update.message.reply_text(text, reply_markup=keyboard)
 
 
 # ---------------- ЛОГИКА ----------------
@@ -77,112 +94,60 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
 
-    # К тарифам
-    if text == "К тарифам":
-        context.user_data.pop("tariff", None)
+    # ---------------- ПОДБОР ----------------
+    if text in ["Подобрать вариант", "Продолжить подбор"]:
 
         await update.message.reply_text(
-            "Давайте сравним варианты 👇\nВыберите тариф:",
+            "Понял Вас 👍\n\n"
+            "Скажите, что сейчас для Вас наиболее актуально?",
+            reply_markup=problem_menu
+        )
+        return
+
+
+    # ---------------- ПРОБЛЕМА ----------------
+    if text == "Теряю заявки":
+        context.user_data["problem"] = text
+
+        await update.message.reply_text(
+            "Понял Вас.\n\n"
+            "Это значит, что клиенты уже пишут, но часть из них теряется на этапе переписки или ответа.\n\n"
+            "Есть 3 варианта решения:",
             reply_markup=tariff_menu
         )
         return
 
 
-    # Сравнение тарифов
-    if text == "Сравнить тарифы":
-        await update.message.reply_text(
-            "Сравнение вариантов 👇\n\n"
-            "Базовый — 30 000₽\n"
-            "Подходит, если нужно просто не терять входящие\n\n"
-            "Стандарт — 50 000₽ ⭐\n"
-            "Оптимальный вариант\n\n"
-            "Под ключ — 70 000₽\n"
-            "Максимальный результат\n\n"
-            "👉 чаще всего выбирают Стандарт"
-        )
-        return
-
-
-    # Вопрос
-    if text == "Задать вопрос":
-        context.user_data["step"] = "question"
+    if text == "Мало продаж":
+        context.user_data["problem"] = text
 
         await update.message.reply_text(
-            "Напишите ваш вопрос 👇"
+            "Понял Вас.\n\n"
+            "В этом случае проблема чаще всего в том, что клиенты не доходят до принятия решения.\n\n"
+            "Есть 3 варианта решения:",
+            reply_markup=tariff_menu
         )
         return
 
 
-    if context.user_data.get("step") == "question":
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"📩 ВОПРОС\n\n{user.first_name}\n{text}"
-        )
-
-        await update.message.reply_text("С вами скоро свяжутся 👍")
-        context.user_data["step"] = None
-        return
-
-
-    # Я оплатил
-    if text == "Я оплатил":
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"💰 ОПЛАТА\n\n{user.first_name}\n@{user.username}"
-        )
-
-        await update.message.reply_text("Спасибо! Проверим оплату 👍")
-        return
-
-
-    # Оплата меню
-    if text == "Оплатить":
-        await update.message.reply_text(
-            "Выберите тариф для оплаты:",
-            reply_markup=pay_menu
-        )
-        return
-
-
-    # выбор тарифа
-    if text in ["Базовый", "Стандарт ⭐ Рекомендуем", "Под ключ"]:
-
-        context.user_data["tariff"] = text
+    if text == "Хочу автоматизацию":
+        context.user_data["problem"] = text
 
         await update.message.reply_text(
-            "Хороший выбор 👇\n\n"
-            "Если хотите — можно сразу перейти к оплате или задать вопрос.",
-            reply_markup=action_menu
+            "Понял Вас.\n\n"
+            "Это про выстраивание системы, которая сама ведёт клиента до заявки или покупки.\n\n"
+            "Есть 3 варианта решения:",
+            reply_markup=tariff_menu
         )
         return
 
 
-    # оплата тарифа
-    if text in PAY_LINKS:
-        link = PAY_LINKS[text]
+    # ---------------- ТАРИФЫ ----------------
+    if text == "Базовый":
+        context.user_data["tariff"] = "Базовый"
 
         await update.message.reply_text(
-            f"Оплата 👇\n{link}\n\nПосле оплаты нажмите «Я оплатил»",
-            reply_markup=ReplyKeyboardMarkup([["Я оплатил"], ["К тарифам"]], resize_keyboard=True)
-        )
-
-        chat_id = update.effective_chat.id
-
-        # мягкий дожим (без инфоцыганщины)
-        context.job_queue.run_once(payment_reminder, 6 * 3600, chat_id=chat_id)
-        context.job_queue.run_once(payment_reminder, 24 * 3600, chat_id=chat_id)
-
-        return
-
-
-    await update.message.reply_text("Используйте кнопки 👇")
-
-
-# ---------------- ЗАПУСК ----------------
-app = ApplicationBuilder().token(TOKEN).build()
-
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
-
-if __name__ == "__main__":
-    app.run_polling()
+            "Базовый вариант 👇\n\n"
+            "Подходит, если важно просто перестать терять входящие заявки.\n\n"
+            "— быстрые ответы клиентам\n"
+            "— фикса
