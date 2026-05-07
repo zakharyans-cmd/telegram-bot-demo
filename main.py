@@ -83,6 +83,7 @@ paid_menu = ReplyKeyboardMarkup(
 
 # ---------------- START ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     try:
         context.user_data.clear()
 
@@ -115,6 +116,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             text,
             reply_markup=keyboard
+        )
+
+        # ---------------- УВЕДОМЛЕНИЕ О ЛИДЕ ----------------
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "🔥 НОВЫЙ ЛИД\n\n"
+                f"Имя: {update.effective_user.first_name}\n"
+                f"Username: @{update.effective_user.username if update.effective_user.username else 'нет'}\n"
+                f"Тип: {user_type}"
+            )
         )
 
     except Exception as e:
@@ -164,6 +176,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["problem"] = text
 
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "📌 ИНТЕРЕС\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                f"Проблема: {text}"
+            )
+        )
+
         await update.message.reply_text(
             "Понял Вас.\n\n"
             "Это значит, что часть клиентов теряется на этапе переписки или ответа.\n\n"
@@ -177,6 +199,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["problem"] = text
 
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "📌 ИНТЕРЕС\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                f"Проблема: {text}"
+            )
+        )
+
         await update.message.reply_text(
             "Понял Вас.\n\n"
             "Часто проблема в том, что клиент не доводится до решения.\n\n"
@@ -189,6 +221,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "Хочу автоматизацию":
 
         context.user_data["problem"] = text
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "📌 ИНТЕРЕС\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                f"Проблема: {text}"
+            )
+        )
 
         await update.message.reply_text(
             "Понял Вас.\n\n"
@@ -205,6 +247,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["tariff"] = "Базовый"
         context.user_data["pay_link"] = PAY_LINK_BASIC
         context.user_data["price"] = "30 000₽"
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "💎 ТАРИФ\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                "Тариф: Базовый"
+            )
+        )
 
         await update.message.reply_text(
             "Базовый вариант 👇\n\n"
@@ -223,6 +275,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pay_link"] = PAY_LINK_STANDARD
         context.user_data["price"] = "50 000₽"
 
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "💎 ТАРИФ\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                "Тариф: Стандарт"
+            )
+        )
+
         await update.message.reply_text(
             "Стандарт ⭐\n\n"
             "Оптимальный вариант для большинства бизнесов.\n\n"
@@ -240,6 +302,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["tariff"] = "Под ключ"
         context.user_data["pay_link"] = PAY_LINK_PRO
         context.user_data["price"] = "70 000₽"
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "💎 ТАРИФ\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                "Тариф: Под ключ"
+            )
+        )
 
         await update.message.reply_text(
             "Под ключ 👇\n\n"
@@ -266,6 +338,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             return
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "💳 ПЕРЕШЕЛ К ОПЛАТЕ\n\n"
+                f"{user.first_name}\n"
+                f"@{user.username if user.username else 'нет'}\n\n"
+                f"Тариф: {context.user_data.get('tariff')}"
+            )
+        )
 
         await update.message.reply_text(
             f"Ссылка для оплаты 👇\n\n"
