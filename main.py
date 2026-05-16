@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 
 from telegram import (
@@ -73,6 +74,7 @@ tariff_menu = ReplyKeyboardMarkup(
 pay_menu = ReplyKeyboardMarkup(
     [
         ["Оплатить"],
+        ["Я оплатил"],
         ["К тарифам"]
     ],
     resize_keyboard=True
@@ -165,7 +167,26 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not text:
             return
 
+        # ---------------- АНТИСПАМ ----------------
+        now = time.time()
+
+        last_action = context.user_data.get("last_action", 0)
+
+        if now - last_action < 1:
+            return
+
+        context.user_data["last_action"] = now
+
         logger.info(f"{user.id} -> {text}")
+
+        # ---------------- УЖЕ ОПЛАТИЛ ----------------
+        if context.user_data.get("paid"):
+            await update.message.reply_text(
+                "Оплата уже отправлена 👍\n\n"
+                "С Вами скоро свяжутся.",
+                reply_markup=main_menu
+            )
+            return
 
         # ---------------- ВОПРОС ----------------
         if context.user_data.get("step") == "question":
@@ -243,48 +264,70 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # ---------------- ТАРИФЫ ----------------
+        # ---------------- ТАРИФ БАЗОВЫЙ ----------------
         if text == "Базовый":
 
             context.user_data["tariff"] = "Базовый"
             context.user_data["pay_link"] = PAY_LINK_BASIC
-            context.user_data["price"] = "30 000₽"
 
             await notify_admin(context, user, "СМОТРИТ ТАРИФ БАЗОВЫЙ")
 
             await update.message.reply_text(
-                "Базовый 👇\n\n"
-                "Подходит, если важно перестать терять заявки.",
+                "Базовый 👌\n\n"
+                "Подходит, если важно перестать терять заявки и быстрее отвечать клиентам.\n\n"
+                "Включает:\n"
+                "— автоматические ответы\n"
+                "— меню с выбором услуг\n"
+                "— сбор заявок\n"
+                "— уведомления о новых клиентах\n"
+                "— удобное общение через Telegram\n\n"
+                "Хороший вариант для небольшого бизнеса или старта автоматизации.\n\n"
+                "Стоимость зависит от задач бизнеса 👌",
                 reply_markup=pay_menu
             )
             return
 
+        # ---------------- ТАРИФ СТАНДАРТ ----------------
         if text == "Стандарт ⭐ Рекомендуем":
 
             context.user_data["tariff"] = "Стандарт"
             context.user_data["pay_link"] = PAY_LINK_STANDARD
-            context.user_data["price"] = "50 000₽"
 
             await notify_admin(context, user, "СМОТРИТ ТАРИФ СТАНДАРТ")
 
             await update.message.reply_text(
                 "Стандарт ⭐\n\n"
-                "Оптимальный вариант для большинства бизнесов.",
+                "Оптимальный вариант для большинства бизнесов.\n\n"
+                "Включает:\n"
+                "— автоматические ответы\n"
+                "— обработку заявок\n"
+                "— прогрев клиентов\n"
+                "— уведомления о новых лидах\n\n"
+                "Стоимость зависит от задач бизнеса 👌",
                 reply_markup=pay_menu
             )
             return
 
+        # ---------------- ТАРИФ ПОД КЛЮЧ ----------------
         if text == "Под ключ":
 
             context.user_data["tariff"] = "Под ключ"
             context.user_data["pay_link"] = PAY_LINK_PRO
-            context.user_data["price"] = "70 000₽"
 
             await notify_admin(context, user, "СМОТРИТ ТАРИФ ПОД КЛЮЧ")
 
             await update.message.reply_text(
-                "Под ключ 👇\n\n"
-                "Полная система автоматизации.",
+                "Под ключ 🚀\n\n"
+                "Полная система автоматизации под Ваш бизнес.\n\n"
+                "Включает:\n"
+                "— индивидуальную настройку бота\n"
+                "— автоматическую обработку клиентов\n"
+                "— прогрев и сопровождение заявок\n"
+                "— уведомления и распределение лидов\n"
+                "— настройку сценариев под Ваши задачи\n"
+                "— помощь с запуском и внедрением\n\n"
+                "Подходит бизнесам, где важно масштабирование и стабильный поток клиентов.\n\n"
+                "Стоимость рассчитывается индивидуально 👌",
                 reply_markup=pay_menu
             )
             return
@@ -293,7 +336,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == "Оплатить":
 
             pay_link = context.user_data.get("pay_link")
-            price = context.user_data.get("price")
 
             if not pay_link:
                 await update.message.reply_text(
@@ -307,13 +349,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"Ссылка для оплаты 👇\n\n"
                 f"{pay_link}\n\n"
-                f"Сумма: {price}\n\n"
                 "После оплаты нажмите «Я оплатил».",
                 reply_markup=pay_menu
             )
             return
 
-        # ---------------- ОПЛАТА ----------------
+        # ---------------- Я ОПЛАТИЛ ----------------
         if text == "Я оплатил":
 
             if context.user_data.get("payment_sent"):
@@ -358,6 +399,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.exception(e)
+
         await update.message.reply_text(
             "Ошибка. Попробуйте ещё раз 👇",
             reply_markup=main_menu
